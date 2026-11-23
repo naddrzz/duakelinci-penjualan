@@ -2,6 +2,10 @@
 
 Newest first. Each entry: what was decided, why, and what would make us revisit it.
 
+## 2026-11-23 — Structured multi-line Telegram summary (requested by the user)
+
+- Replaced the 435-character single-line Telegram paragraph in `telegram_summary()` (`app/analysis.py`) with a 3-block scannable message: standalone period headline, bulleted executive KPIs (`•`), and a vertical numbered list (`1.`–`5.`) of the weakest outlets including both `%` drop and `−Rp` drop. Backed by NN/g mobile scanning research, Smart Brevity / BLUF principles, and Telegram's `lineBreaks: .keep` clipboard paste specification (full citations in [research-weakest-outlet-and-telegram.md](research-weakest-outlet-and-telegram.md)).
+
 ## 2026-11-23 — In-memory custom CSV upload with stdlib multipart parsing (requested by the user)
 
 - **Zero extra dependencies**: `POST /api/upload` streams the request body with a strict `10 MiB` cap (`MAX_UPLOAD_BYTES`) and parses `multipart/form-data` via Python's stdlib `email.parser.BytesParser` before running `load_sales_text()` and `build_report()` in memory. This keeps `requirements.txt` free of `python-multipart` and works on read-only container filesystems.

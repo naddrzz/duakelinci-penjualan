@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.1 — 2026-11-23
+
+- Reformatted `telegram_summary()` into a scannable multi-line BLUF layout (headline, bulleted KPIs, and a numbered 5-outlet watch list with both `%` and rupiah change) so it reads in seconds on mobile Telegram without losing any context; documented primary-source research in `docs/research-weakest-outlet-and-telegram.md`.
+
 ## 1.7.0 — 2026-11-23
 
 - Added **Unggah CSV** feature (`POST /api/upload`, `POST /api/report/reset`, `GET /api/sample-csv`) so users can upload any UTF-8 CSV following the 15-column sample schema (comma or semicolon delimited, up to 10 MB) directly from the sidebar, mobile bar, or data notes footer.

@@ -925,9 +925,12 @@ table.data { width: 100%; border-collapse: separate; border-spacing: 0; font-siz
 .tg-card { display: flex; flex-direction: column; }
 .tg-card label { font-weight: 500; font-size: 0.8125rem; color: var(--muted); margin-bottom: 8px; }
 textarea.field {
-  display: block; min-height: 170px; flex: 1; resize: vertical;
-  padding: 12px 14px; line-height: 1.6;
+  display: block; min-height: 316px; flex: 1; resize: vertical;
+  padding: 12px 14px; line-height: 1.55;
   background: var(--surface-2); border-radius: var(--radius-md);
+}
+@media (min-width: 961px) {
+  textarea.field { font-size: 0.875rem; }
 }
 .tg-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
 

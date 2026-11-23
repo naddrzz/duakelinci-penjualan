@@ -37,11 +37,25 @@ The page also lists every outlet with its rupiah and % change, so large rupiah d
 
 ## 3. Telegram summary
 
-One paragraph, Bahasa Indonesia, generated from the report (never hard-coded): total net sales, base → current with direction (naik/turun/stabil), best region and best brand with share, and the weakest outlets as `name branch (−N%)`. Built by `telegram_summary()`. The app only displays it with a copy button; it never sends anything.
+Scannable multi-line message in Bahasa Indonesia (BLUF headline + bulleted KPIs + numbered watch list), generated from the report (never hard-coded): period headline, total net sales with direction (naik/turun/stabil), base → current comparison, best region and best brand with share, and the weakest outlets numbered `1..N` as `name, branch (−N% · −Rp X jt)`. Built by `telegram_summary()`. See [research-weakest-outlet-and-telegram.md](research-weakest-outlet-and-telegram.md) for the UX & platform evidence behind this layout. The app only displays it with a copy button; it never sends anything.
 
 Sample output:
 
-> Ringkasan Penjualan Dua Kelinci Sep–Okt 2026: total penjualan bersih Rp 1,73 miliar (Sep Rp 847,5 jt → Okt Rp 878,4 jt, naik 3,6%). Wilayah terbaik Jabodetabek Rp 495,8 jt (28,7% dari total), merek terbaik Kacang Dua Kelinci Rp 739,8 jt (42,9%). Outlet yang perlu diperhatikan (penurunan terbesar Sep→Okt): Minimarket Sido Muncul Palembang (−69%), Toko Bintang Semarang (−63%), Toko Anugerah Palembang (−53%), Toko Mekar Banjarmasin (−52%), Toko Sinar Abadi Jakarta Barat (−48%).
+```text
+Ringkasan Penjualan Dua Kelinci — Sep–Okt 2026
+
+Total penjualan bersih: Rp 1,73 miliar (naik 3,6%)
+• Perbandingan: Sep Rp 847,5 jt → Okt Rp 878,4 jt
+• Wilayah terbaik: Jabodetabek — Rp 495,8 jt (28,7% dari total)
+• Merek terbaik: Kacang Dua Kelinci — Rp 739,8 jt (42,9% dari total)
+
+Outlet perlu diperhatikan (penurunan terbesar Sep → Okt):
+1. Minimarket Sido Muncul, Palembang (−69% · −Rp 6,3 jt)
+2. Toko Bintang, Semarang (−63% · −Rp 5,5 jt)
+3. Toko Anugerah, Palembang (−53% · −Rp 6,6 jt)
+4. Toko Mekar, Banjarmasin (−52% · −Rp 2,7 jt)
+5. Toko Sinar Abadi, Jakarta Barat (−48% · −Rp 3,4 jt)
+```
 
 ## Reference numbers (sample file)
 

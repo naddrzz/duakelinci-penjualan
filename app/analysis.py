@@ -102,7 +102,7 @@ def weakest_analysis(outlets: list[dict], min_base_idr: int, count: int) -> dict
 
 
 def telegram_summary(report: dict) -> str:
-    """One copy-ready paragraph for the sales manager (Bahasa Indonesia)."""
+    """Scannable multi-line summary for Telegram (Bahasa Indonesia, BLUF + numbered list)."""
     base, current = report["period"]["base"], report["period"]["current"]
     totals = report["totals"]
     region, brand = report["regions"][0], report["brands"][0]
@@ -113,26 +113,27 @@ def telegram_summary(report: dict) -> str:
     else:
         trend = f"{'naik' if change > 0 else 'turun'} {pct(abs(change), signed=False)}"
 
-    text = (
-        f"Ringkasan Penjualan Dua Kelinci {report['period']['label']}: "
-        f"total penjualan bersih {rp_short(totals['net'])} "
-        f"({month_short(base)} {rp_short(totals['by_month'][base])} → "
-        f"{month_short(current)} {rp_short(totals['by_month'][current])}, {trend}). "
-        f"Wilayah terbaik {region['name']} {rp_short(region['total'])} "
-        f"({pct(region['share_pct'], signed=False)} dari total), "
-        f"merek terbaik {brand['name']} {rp_short(brand['total'])} "
-        f"({pct(brand['share_pct'], signed=False)}). "
-    )
+    lines = [
+        f"Ringkasan Penjualan Dua Kelinci — {report['period']['label']}",
+        "",
+        f"Total penjualan bersih: {rp_short(totals['net'])} ({trend})",
+        f"• Perbandingan: {month_short(base)} {rp_short(totals['by_month'][base])} → {month_short(current)} {rp_short(totals['by_month'][current])}",
+        f"• Wilayah terbaik: {region['name']} — {rp_short(region['total'])} ({pct(region['share_pct'], signed=False)} dari total)",
+        f"• Merek terbaik: {brand['name']} — {rp_short(brand['total'])} ({pct(brand['share_pct'], signed=False)} dari total)",
+        "",
+    ]
     weakest = report["weakest"]
     if weakest:
-        names = ", ".join(f"{o['name']} {o['branch']} ({pct(o['change_pct'], digits=0)})" for o in weakest)
-        text += (
-            f"Outlet yang perlu diperhatikan (penurunan terbesar "
-            f"{month_short(base)}→{month_short(current)}): {names}."
+        lines.append(
+            f"Outlet perlu diperhatikan (penurunan terbesar {month_short(base)} → {month_short(current)}):"
         )
+        for idx, o in enumerate(weakest, start=1):
+            lines.append(
+                f"{idx}. {o['name']}, {o['branch']} ({pct(o['change_pct'], digits=0)} · {rp_short(o['change_idr'])})"
+            )
     else:
-        text += f"Tidak ada outlet yang turun dari {month_short(base)} ke {month_short(current)}."
-    return text
+        lines.append(f"Tidak ada outlet yang turun dari {month_short(base)} ke {month_short(current)}.")
+    return "\n".join(lines)
 
 
 def build_report(

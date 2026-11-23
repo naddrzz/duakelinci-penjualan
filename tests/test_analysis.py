@@ -77,16 +77,15 @@ def test_change_pct_without_base():
 
 def test_telegram_summary(report):
     text = report["telegram_summary"]
-    assert "\n" not in text
+    assert text.count("\n") >= 10
     for expected in (
-        "Rp 1,73 miliar",
-        "Sep Rp 847,5 jt",
-        "Okt Rp 878,4 jt",
-        "naik 3,6%",
-        "Jabodetabek Rp 495,8 jt",
-        "Kacang Dua Kelinci Rp 739,8 jt",
-        "Minimarket Sido Muncul Palembang (−69%)",
-        "Toko Sinar Abadi Jakarta Barat (−48%)",
+        "Ringkasan Penjualan Dua Kelinci — Sep–Okt 2026",
+        "Total penjualan bersih: Rp 1,73 miliar (naik 3,6%)",
+        "Sep Rp 847,5 jt → Okt Rp 878,4 jt",
+        "Jabodetabek — Rp 495,8 jt (28,7% dari total)",
+        "Kacang Dua Kelinci — Rp 739,8 jt (42,9% dari total)",
+        "1. Minimarket Sido Muncul, Palembang (−69% · −Rp 6,3 jt)",
+        "5. Toko Sinar Abadi, Jakarta Barat (−48% · −Rp 3,4 jt)",
     ):
         assert expected in text
 
