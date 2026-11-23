@@ -424,5 +424,221 @@
 
   window.addEventListener("popstate", () => navigate(location.href, { push: false }));
 
+  // ---------------------------------------------------------------- csv upload & flash
+  const uploadDialog = document.getElementById("upload-dialog");
+  const flashWrap = document.getElementById("flash-banner");
+
+  function formatBytes(bytes) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1).replace(".", ",")} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2).replace(".", ",")} MB`;
+  }
+
+  function showFlashFromSession() {
+    if (!flashWrap) return;
+    let msg = "";
+    try {
+      msg = sessionStorage.getItem("dk-flash") || "";
+      if (msg) sessionStorage.removeItem("dk-flash");
+    } catch {}
+    if (!msg) return;
+    const textEl = flashWrap.querySelector("[data-flash-text]");
+    if (textEl) textEl.textContent = msg;
+    flashWrap.hidden = false;
+
+    let remaining = 7000;
+    let startedAt = Date.now();
+    let timer = setTimeout(() => { flashWrap.hidden = true; }, remaining);
+
+    document.addEventListener("visibilitychange", () => {
+      if (flashWrap.hidden) return;
+      if (document.hidden) {
+        clearTimeout(timer);
+        remaining = Math.max(1000, remaining - (Date.now() - startedAt));
+      } else {
+        startedAt = Date.now();
+        timer = setTimeout(() => { flashWrap.hidden = true; }, remaining);
+      }
+    });
+    flashWrap.querySelector("[data-flash-close]")?.addEventListener("click", () => {
+      clearTimeout(timer);
+      flashWrap.hidden = true;
+    });
+  }
+
+  async function resetToSampleData() {
+    try {
+      const res = await fetch("/api/report/reset", {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      });
+      const body = await res.json();
+      if (res.ok && body.ok) {
+        try {
+          sessionStorage.setItem("dk-flash", `Kembali menggunakan data sampel bawaan (${body.source} · ${body.period}).`);
+        } catch {}
+        location.reload();
+      }
+    } catch {
+      location.reload();
+    }
+  }
+
+  function initUploadDialog() {
+    showFlashFromSession();
+
+    document.querySelectorAll("[data-reset-form]").forEach((form) => {
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        resetToSampleData();
+      });
+    });
+
+    if (!uploadDialog) return;
+    const form = uploadDialog.querySelector("[data-upload-form]");
+    const input = uploadDialog.querySelector("#csv-file");
+    const dropzone = uploadDialog.querySelector("[data-dropzone]");
+    const titleEl = uploadDialog.querySelector("[data-dropzone-title]");
+    const subEl = uploadDialog.querySelector("[data-dropzone-sub]");
+    const errBox = uploadDialog.querySelector("#upload-error");
+    const errText = uploadDialog.querySelector("[data-upload-error-text]");
+    const submitBtn = uploadDialog.querySelector("[data-upload-submit]");
+    const defaultTitle = titleEl.textContent;
+    const defaultSub = subEl.textContent;
+    const defaultBtnLabel = submitBtn.textContent;
+    let openerBtn = null;
+
+    function setError(message) {
+      const hasErr = Boolean(message);
+      errBox.hidden = !hasErr;
+      errText.textContent = message || "";
+      dropzone.classList.toggle("is-invalid", hasErr);
+      input.setAttribute("aria-invalid", String(hasErr));
+    }
+
+    function updateSelectedFile(file) {
+      setError("");
+      if (!file) {
+        dropzone.classList.remove("has-file");
+        titleEl.textContent = defaultTitle;
+        subEl.textContent = defaultSub;
+        return;
+      }
+      dropzone.classList.add("has-file");
+      titleEl.textContent = file.name;
+      subEl.textContent = `${formatBytes(file.size)} · Klik untuk mengganti berkas`;
+    }
+
+    function openDialog(trigger, { viaKeyboard = false } = {}) {
+      openerBtn = trigger || document.activeElement;
+      closeMobileSidebar();
+      form.reset();
+      updateSelectedFile(null);
+      if (typeof uploadDialog.showModal === "function") {
+        uploadDialog.showModal();
+        if (viaKeyboard) input.focus({ preventScroll: true });
+        else uploadDialog.focus({ preventScroll: true });
+      } else {
+        uploadDialog.setAttribute("open", "");
+      }
+    }
+
+    function closeDialog() {
+      if (typeof uploadDialog.close === "function" && uploadDialog.open) {
+        uploadDialog.close();
+      } else {
+        uploadDialog.removeAttribute("open");
+      }
+    }
+
+    document.querySelectorAll("[data-open-upload]").forEach((btn) => {
+      btn.addEventListener("click", (event) => openDialog(btn, { viaKeyboard: event.detail === 0 }));
+    });
+    uploadDialog.querySelectorAll("[data-close-upload]").forEach((btn) => {
+      btn.addEventListener("click", closeDialog);
+    });
+    uploadDialog.addEventListener("click", (event) => {
+      if (event.target === uploadDialog) closeDialog();
+    });
+    uploadDialog.addEventListener("close", () => {
+      openerBtn?.focus?.({ preventScroll: true });
+    });
+
+    uploadDialog.querySelector("[data-reset-trigger]")?.addEventListener("click", () => {
+      resetToSampleData();
+    });
+
+    input.addEventListener("change", () => {
+      updateSelectedFile(input.files?.[0] || null);
+    });
+
+    ["dragenter", "dragover"].forEach((evtName) => {
+      dropzone.addEventListener(evtName, (event) => {
+        event.preventDefault();
+        dropzone.classList.add("is-dragover");
+      });
+    });
+    ["dragleave", "dragend", "drop"].forEach((evtName) => {
+      dropzone.addEventListener(evtName, (event) => {
+        event.preventDefault();
+        dropzone.classList.remove("is-dragover");
+      });
+    });
+    dropzone.addEventListener("drop", (event) => {
+      const file = event.dataTransfer?.files?.[0];
+      if (!file) return;
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      updateSelectedFile(file);
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const file = input.files?.[0];
+      if (!file) {
+        setError("Pilih berkas CSV terlebih dahulu sebelum melanjutkan.");
+        input.focus();
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setError("Ukuran berkas melebihi batas maksimum 10 MB.");
+        return;
+      }
+
+      setError("");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Memproses…";
+      try {
+        const fd = new FormData(form);
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: fd,
+          headers: { Accept: "application/json" },
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || !body.ok) {
+          setError(body.detail || "Gagal memproses berkas CSV. Periksa kembali format kolomnya.");
+          return;
+        }
+        try {
+          const rowsFmt = Number(body.clean_rows || 0).toLocaleString("id-ID");
+          sessionStorage.setItem(
+            "dk-flash",
+            `Data diperbarui dari ${body.source} (${body.period} · ${rowsFmt} baris transaksi bersih).`
+          );
+        } catch {}
+        closeDialog();
+        location.reload();
+      } catch {
+        setError("Tidak dapat menghubungi server. Coba lagi beberapa saat.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = defaultBtnLabel;
+      }
+    });
+  }
+
+  initUploadDialog();
   initPage(document);
 })();

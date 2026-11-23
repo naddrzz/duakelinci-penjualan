@@ -14,7 +14,7 @@ python -m pytest
 uvicorn app.main:app --reload
 ```
 
-Open http://127.0.0.1:8000. JSON is at `/api/report`.
+Open http://127.0.0.1:8000. JSON is at `/api/report`. To analyse another CSV with the same 15-column format, click **Unggah CSV** in the sidebar (you can also download the sample CSV template from the dialog or reset back to the default sample at any time).
 
 ## Run with Docker
 

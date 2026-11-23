@@ -9,11 +9,11 @@
 {%- set outlet_types = r.outlets|map(attribute="outlet_type")|unique|sort -%}
 {%- set n_down = r.outlets|selectattr("change_idr", "lt", 0)|list|length -%}
 {%- set n_up = r.outlets|length - n_down -%}
-{%- set month_max = [t.by_month[base], t.by_month[current]]|max -%}
+{%- set month_max = [t.by_month[base], t.by_month[current], 1]|max -%}
 {%- set regions_by_change = r.regions|rejectattr("change_pct", "none")|sort(attribute="change_pct")|list -%}
 {%- set brands_by_change = r.brands|rejectattr("change_pct", "none")|sort(attribute="change_pct")|list -%}
-{%- set top_region_max = r.regions[0].total if r.regions else 1 -%}
-{%- set top_brand_max = r.brands[0].total if r.brands else 1 -%}
+{%- set top_region_max = [r.regions[0].total, 1]|max if r.regions else 1 -%}
+{%- set top_brand_max = [r.brands[0].total, 1]|max if r.brands else 1 -%}
 
 {% call m.page_head(
      "Ringkasan penjualan " ~ p.label,

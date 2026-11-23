@@ -188,7 +188,11 @@
           {%- endfor %}
         </ol>
         {%- set top_drop = a.largest_drop_idr[0] %}
+        {% if top_drop.change_idr < 0 %}
         <p class="verdict"><strong>{{ drop_grosir }} dari {{ a.largest_drop_idr|length }}</strong> adalah grosir. {{ top_drop.name }} masih outlet terbesar ke-{{ ranked_ids.index(top_drop.outlet_id) + 1 }} dari {{ a.total }} meski turun {{ (0 - top_drop.change_idr)|rp_short }}: angkanya besar karena outletnya besar.</p>
+        {% else %}
+        <p class="verdict">Tidak ada outlet yang mengalami penurunan rupiah pada periode ini.</p>
+        {% endif %}
       </div>
     </div>
     <p class="conclusion">Persentase dengan ambang minimal menemukan outlet yang benar-benar merosot, berapa pun ukurannya. Daftar lengkap outlet ada di <a href="/#outlet">tabel semua outlet di Ringkasan</a>.</p>

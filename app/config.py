@@ -15,3 +15,6 @@ MIN_BASE_SALES_IDR = 5_000_000
 
 # How many weakest outlets to flag.
 WEAK_OUTLET_COUNT = 5
+
+# Maximum size accepted by POST /api/upload (10 MiB).
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024

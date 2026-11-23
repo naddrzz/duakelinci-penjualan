@@ -2,6 +2,12 @@
 
 Newest first. Each entry: what was decided, why, and what would make us revisit it.
 
+## 2026-11-23 — In-memory custom CSV upload with stdlib multipart parsing (requested by the user)
+
+- **Zero extra dependencies**: `POST /api/upload` streams the request body with a strict `10 MiB` cap (`MAX_UPLOAD_BYTES`) and parses `multipart/form-data` via Python's stdlib `email.parser.BytesParser` before running `load_sales_text()` and `build_report()` in memory. This keeps `requirements.txt` free of `python-multipart` and works on read-only container filesystems.
+- **Same validation & cleaning pipeline**: uploaded CSVs go through the exact 15-column schema, region alias normalization, deduplication, and `>= 2` month checks as the startup CSV, plus automatic `;` delimiter detection for Indonesian-locale Excel CSV exports and friendly Bahasa Indonesia error messages (including `.xlsx` detection).
+- **Safe state & instant reset**: the startup report stays cached in `app.state.default_report`, so invalid uploads leave the current report untouched and `POST /api/report/reset` restores the sample dataset instantaneously. Revisit if uploaded datasets need per-user session isolation or persistent database storage in a multi-tenant deployment.
+
 ## 2026-11-23 — Clean, restrained Dua Kelinci redesign (requested by the user)
 
 References studied: `https://duakelinci.com/en` (`#D61A21` corporate crimson, `Montserrat` display headings, pill primary CTA), Mobbin analytics screens (Shopify, Square, Causal, Churnkey, Monarch), and visual feedback requesting a cleaner surface without green KPI fills, colored card border strips, or the red corporate footer block.

@@ -159,7 +159,7 @@ button, .sidenav a, .segmented label, .sort-btn, .pill {
 @media (forced-colors: active) {
   :focus-visible { outline-color: Highlight; }
 }
-h1:focus { outline: none; }
+h1:focus, .upload-dialog:focus { outline: none; }
 ::selection { background: oklch(0.92 0.012 35); color: var(--text); }
 
 h1, h2, h3 {
@@ -336,13 +336,33 @@ html.sidebar-ready .sidebar-unhide {
 }
 
 .sidebar-foot {
-  margin-top: auto; padding: 14px 10px 2px;
+  margin-top: auto; padding: 14px 10px 4px;
   border-top: var(--border-hairline) solid var(--line);
-  display: grid; gap: 2px;
+  display: grid; gap: 3px;
+}
+.sidebar-source-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
 }
 .sidebar-foot-label { font-size: 0.75rem; color: var(--muted); }
 .sidebar-foot-value { font-size: 0.84375rem; font-weight: 600; color: var(--text); }
 .sidebar-foot-meta { font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sidebar-source-file {
+  font-size: 0.75rem; color: var(--subtle);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sidebar-data-actions {
+  display: grid; gap: 4px; margin-top: 8px;
+}
+.btn-sidebar {
+  width: 100%; min-height: 40px; padding: 0 12px; font-size: 0.84375rem;
+}
+.btn-reset {
+  width: 100%; min-height: 38px; padding: 0 8px; font-size: 0.8125rem;
+}
+@media (pointer: coarse) {
+  .btn-sidebar, .btn-reset { min-height: 44px; }
+}
+.mobile-upload-btn { margin-inline-start: auto; }
 
 .mobile-bar {
   display: none;
@@ -527,6 +547,12 @@ h1 {
   .btn-primary:hover { background: var(--brand-red-hover); }
   .btn-secondary:hover { background: var(--surface-2); }
   .btn-ghost:hover { color: var(--text); }
+}
+.btn:disabled {
+  cursor: not-allowed;
+  background: var(--surface-3);
+  color: var(--muted);
+  border-color: var(--line-solid);
 }
 @media (prefers-reduced-motion: no-preference) {
   .btn:not(:disabled):active { scale: 0.96; }
@@ -1029,6 +1055,15 @@ details.why[open] summary svg { rotate: 90deg; }
   gap: 8px 16px; margin-bottom: 8px;
 }
 .notes-head h2 { font-family: var(--sans); font-size: 0.84375rem; font-weight: 600; color: var(--text); }
+.notes-source {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+}
+.inline-form { display: inline; margin: 0; }
+.btn-link {
+  background: none; border: 0; padding: 0; font-family: inherit; cursor: pointer;
+  min-height: 36px;
+}
+@media (pointer: coarse) { .btn-link { min-height: 44px; } }
 .source-chip {
   font-size: 0.75rem; color: var(--muted);
   overflow-wrap: anywhere;
@@ -1036,6 +1071,163 @@ details.why[open] summary svg { rotate: 90deg; }
 .notes-list {
   margin: 0; padding-inline-start: 18px; display: grid; gap: 4px;
   color: var(--muted); font-size: 0.8125rem; overflow-wrap: anywhere;
+}
+
+/* ---------- Flash Status Banner & CSV Upload Dialog ---------- */
+.flash-wrap {
+  max-width: 1360px; margin: 0 auto; padding: 20px 24px 0;
+}
+@media (max-width: 640px) {
+  .flash-wrap { padding: 14px 14px 0; }
+}
+.flash-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: var(--radius-md);
+  background: var(--pos-soft); color: var(--pos);
+  border: 1px solid oklch(0.41 0.105 152 / 0.18);
+  font-size: 0.875rem; font-weight: 500;
+}
+.flash-banner > svg { width: 16px; height: 16px; flex: none; }
+.flash-banner > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.flash-close {
+  position: relative; display: inline-grid; place-items: center;
+  width: 30px; height: 30px; padding: 0; flex: none;
+  border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: inherit; cursor: pointer;
+}
+.flash-close::before { content: ""; position: absolute; inset: -7px; }
+.flash-close svg { width: 14px; height: 14px; }
+@media (hover: hover) and (pointer: fine) {
+  .flash-close:hover { background: oklch(0.41 0.105 152 / 0.1); }
+}
+
+.upload-dialog {
+  width: min(520px, calc(100vw - 24px));
+  max-width: 100%;
+  margin: auto; padding: 22px 24px;
+  border: 0; border-radius: var(--radius-lg);
+  background: var(--surface); color: var(--text);
+  box-shadow: var(--picker-shadow);
+}
+.upload-dialog::backdrop {
+  background: oklch(0.18 0.008 45 / 0.38);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .upload-dialog[open] {
+    animation: dialog-in 180ms var(--ease-out) both;
+  }
+  .upload-dialog[open]::backdrop {
+    animation: view-fade 180ms ease-out both;
+  }
+}
+@keyframes dialog-in {
+  from { opacity: 0; scale: 0.97; translate: 0 6px; }
+}
+@media (max-width: 520px) {
+  .upload-dialog { padding: 18px 16px; border-radius: 14px; }
+}
+@media (forced-colors: active) {
+  .upload-dialog { border: 2px solid CanvasText; }
+}
+
+.dialog-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; margin-bottom: 16px;
+}
+.dialog-head h2 { font-size: 1.0625rem; font-weight: 700; letter-spacing: -0.015em; }
+
+.dropzone {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; text-align: center;
+  min-height: 132px; padding: 20px 16px;
+  border: 1.5px dashed var(--control-line);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+.dropzone:has(input:focus-visible) {
+  border-style: solid;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--focus-halo);
+}
+.dropzone.is-dragover {
+  border-style: solid;
+  border-color: var(--text);
+  background: var(--surface-3);
+}
+.dropzone.has-file {
+  border-style: solid;
+  border-color: var(--pos);
+  background: var(--pos-soft);
+}
+.dropzone.is-invalid {
+  border-style: solid;
+  border-color: var(--neg);
+  background: var(--neg-soft);
+}
+@media (hover: hover) and (pointer: fine) {
+  .dropzone:hover:not(.has-file):not(.is-invalid) {
+    background: var(--surface-3);
+    border-color: var(--muted);
+  }
+}
+.dropzone-icon {
+  display: grid; place-items: center;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--surface); color: var(--text);
+  box-shadow: var(--elevation-card);
+  margin-bottom: 2px;
+}
+.dropzone-icon svg { width: 20px; height: 20px; }
+.dropzone.has-file .dropzone-icon { color: var(--pos); }
+.dropzone.is-invalid .dropzone-icon { color: var(--neg); }
+.dropzone-title {
+  font-weight: 600; font-size: 0.90625rem; color: var(--text);
+  overflow-wrap: anywhere;
+}
+.dropzone-sub {
+  font-size: 0.78125rem; color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.upload-error {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin-top: 10px; padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--neg-soft); color: var(--neg);
+  font-size: 0.8125rem; font-weight: 500;
+}
+.upload-error svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+.upload-error span { min-width: 0; overflow-wrap: anywhere; }
+
+.format-box {
+  margin-top: 14px; padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  border: var(--border-hairline) solid var(--line-solid);
+}
+.format-head {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 4px 12px; margin-bottom: 6px;
+}
+.format-title { font-size: 0.78125rem; font-weight: 600; color: var(--text); }
+.format-cols {
+  display: block; font-size: 0.75rem; line-height: 1.55;
+  color: var(--muted); overflow-wrap: anywhere;
+}
+
+.dialog-actions {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 10px; margin-top: 18px;
+}
+.dialog-actions-end {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-inline-start: auto;
+}
+@media (max-width: 440px) {
+  .dialog-actions-end { width: 100%; }
+  .dialog-actions-end .btn { flex: 1 1 auto; }
 }
 
 /* ---------- Page Transitions & Skeletons ---------- */
@@ -1080,7 +1272,7 @@ main.is-leaving > * { opacity: 0; translate: 0 -6px; transition: opacity 120ms e
 }
 
 @media print {
-  .sidebar, .sidebar-unhide, .mobile-bar, .sidebar-backdrop, .skip, .progress, .toolbar, .head-actions, .tg-actions, .sort-icon, .view-switch { display: none; }
+  .sidebar, .sidebar-unhide, .mobile-bar, .sidebar-backdrop, .sidebar-data-actions, .notes-source button, .notes-source form, .flash-wrap, .upload-dialog, .skip, .progress, .toolbar, .head-actions, .tg-actions, .sort-icon, .view-switch { display: none; }
   .app-body, html[data-sidebar="collapsed"] .app-body { padding-inline-start: 0; }
   body { background: #fff; }
   .card { box-shadow: none; border: 1px solid #ccc; }

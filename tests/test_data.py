@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from app.data import UNASSIGNED_SALESMAN, load_sales
+from app.data import UNASSIGNED_SALESMAN, load_sales, load_sales_text
 
 HEADER = (
     "date,invoice_no,region,branch,outlet_id,outlet_name,outlet_type,salesman,brand,sku,"
@@ -80,6 +80,15 @@ def test_unparseable_number_raises_with_line(tmp_path):
     path = write_csv(tmp_path, row().replace(",1,186000", ",abc,186000"))
     with pytest.raises(ValueError, match="line 2"):
         load_sales(path)
+
+
+def test_semicolon_delimited_csv_supported():
+    semi_text = (HEADER + row("Jabar", qty=3) + "\n").replace(",", ";")
+    rows, report = load_sales_text(semi_text, source_name="excel_id.csv")
+    assert len(rows) == 1
+    assert rows[0].region == "Jawa Barat"
+    assert rows[0].qty_carton == 3
+    assert report.clean_rows == 1
 
 
 def test_real_file_cleaning_report(sales):

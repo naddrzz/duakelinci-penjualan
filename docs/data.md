@@ -1,6 +1,6 @@
 # Data: source file and cleaning rules
 
-Source: `data/dua_kelinci_sample_sales_sep_oct_2026.csv` (override with the `DATA_PATH` env var). One row = one SKU line on one invoice. Implemented in `app/data.py`; tested in `tests/test_data.py`.
+Source: `data/dua_kelinci_sample_sales_sep_oct_2026.csv` (override at startup with the `DATA_PATH` env var, or upload another CSV with the same 15 columns directly from the UI via `POST /api/upload`). Both comma-delimited (`,`) and semicolon-delimited (`;`, common in Indonesian Excel exports) UTF-8 CSVs are accepted. One row = one SKU line on one invoice. Implemented in `app/data.py`; tested in `tests/test_data.py`.
 
 ## Columns
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.0 — 2026-11-23
+
+- Added **Unggah CSV** feature (`POST /api/upload`, `POST /api/report/reset`, `GET /api/sample-csv`) so users can upload any UTF-8 CSV following the 15-column sample schema (comma or semicolon delimited, up to 10 MB) directly from the sidebar, mobile bar, or data notes footer.
+- Accessible `<dialog>` modal with drag-and-drop / file picker, inline Bahasa Indonesia validation errors (missing columns, invalid row types, `< 2` months, or `.xlsx` uploads), sample CSV template download link, active custom-data badge, and one-click reset back to the bundled sample dataset.
+
 ## 1.6.1 — 2026-11-23
 
 - Wilayah & merek (`/wilayah-merek`): moved `form.view-switch` from the page header into the "Tabel penjualan per wilayah/merek" card header and kept both view selects synchronized without vertical jump on switch.

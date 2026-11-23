@@ -70,9 +70,24 @@
     </nav>
 
     <div class="sidebar-foot">
-      <span class="sidebar-foot-label">Periode laporan</span>
+      <div class="sidebar-source-head">
+        <span class="sidebar-foot-label">Sumber data</span>
+        {% if is_custom_data %}<span class="pill pill-pos">Kustom</span>{% endif %}
+      </div>
       <strong class="sidebar-foot-value">{{ r.period.label }}</strong>
       <span class="sidebar-foot-meta">{{ r.totals.outlets }} outlet · {{ r.totals.invoices }} invoice</span>
+      <span class="sidebar-source-file" title="{{ r.source }}">{{ r.source }}</span>
+      <div class="sidebar-data-actions">
+        <button type="button" class="btn btn-secondary btn-sidebar" data-open-upload>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 10.5V2.5M4.75 5.75 8 2.5l3.25 3.25"/><path d="M2.5 11v1.5A1.5 1.5 0 0 0 4 14h8a1.5 1.5 0 0 0 1.5-1.5V11"/></svg>
+          <span>Unggah CSV</span>
+        </button>
+        {% if is_custom_data %}
+        <form method="post" action="/api/report/reset" data-reset-form>
+          <button type="submit" class="btn btn-ghost btn-reset">Gunakan data sampel</button>
+        </form>
+        {% endif %}
+      </div>
     </div>
   </aside>
 
@@ -96,7 +111,20 @@
         <span class="brand-divider" aria-hidden="true"></span>
         <span class="brand-label">Penjualan</span>
       </a>
+      <button type="button" class="sidebar-toggle mobile-upload-btn" data-open-upload aria-label="Unggah berkas CSV" title="Unggah CSV">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 10.5V2.5M4.75 5.75 8 2.5l3.25 3.25"/><path d="M2.5 11v1.5A1.5 1.5 0 0 0 4 14h8a1.5 1.5 0 0 0 1.5-1.5V11"/></svg>
+      </button>
     </header>
+
+    <div class="flash-wrap" id="flash-banner" role="status" hidden>
+      <div class="flash-banner">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
+        <span data-flash-text></span>
+        <button type="button" class="flash-close" data-flash-close aria-label="Tutup pemberitahuan">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+        </button>
+      </div>
+    </div>
 
     <main id="isi" data-page="{{ page }}">
     {% block content %}{% endblock %}
@@ -106,7 +134,15 @@
       <section class="card data-notes" aria-labelledby="catatan">
         <div class="notes-head">
           <h2 id="catatan">Catatan data</h2>
-          <span class="source-chip">{{ r.source }}</span>
+          <div class="notes-source">
+            <span class="source-chip">{{ r.source }}</span>
+            <button type="button" class="card-link btn-link" data-open-upload>Unggah CSV lain</button>
+            {% if is_custom_data %}
+            <form method="post" action="/api/report/reset" data-reset-form class="inline-form">
+              <button type="submit" class="card-link btn-link">Kembalikan sampel</button>
+            </form>
+            {% endif %}
+          </div>
         </div>
         <ul class="notes-list">
           <li>{{ q.raw_rows }} baris dibaca, {{ q.duplicates_removed }} baris duplikat dibuang ({{ q.duplicates_net_idr|rp }}), {{ q.clean_rows }} baris dipakai. Sumber: {{ r.source }}.</li>
@@ -119,5 +155,51 @@
     </footer>
   </div>
 </div>
+
+<dialog class="upload-dialog" id="upload-dialog" aria-labelledby="upload-title" tabindex="-1">
+  <div class="dialog-head">
+    <div>
+      <h2 id="upload-title">Unggah CSV penjualan</h2>
+      <p class="card-sub">Data dianalisis langsung dengan aturan pembersihan yang sama seperti berkas sampel.</p>
+    </div>
+    <button type="button" class="sidebar-toggle" data-close-upload aria-label="Tutup dialog unggah">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+    </button>
+  </div>
+
+  <form method="post" action="/api/upload" enctype="multipart/form-data" data-upload-form novalidate>
+    <label for="csv-file" class="dropzone" data-dropzone>
+      <input type="file" id="csv-file" name="file" accept=".csv,text/csv" required class="sr-only">
+      <span class="dropzone-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15.5V4.5M7.5 9 12 4.5 16.5 9"/><path d="M4 15.5v2A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5v-2"/></svg>
+      </span>
+      <span class="dropzone-title" data-dropzone-title>Pilih berkas .csv atau seret ke sini</span>
+      <span class="dropzone-sub" data-dropzone-sub>UTF-8 CSV (pemisah koma atau titik-koma) · Maksimal 10 MB</span>
+    </label>
+
+    <div class="upload-error" id="upload-error" role="alert" hidden>
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5M8 11h.01"/></svg>
+      <span data-upload-error-text></span>
+    </div>
+
+    <div class="format-box">
+      <div class="format-head">
+        <span class="format-title">15 kolom wajib (minimal 2 bulan transaksi)</span>
+        <a class="card-link" href="/api/sample-csv" download>Unduh contoh CSV &darr;</a>
+      </div>
+      <code class="format-cols">{{ required_columns|join(", ") }}</code>
+    </div>
+
+    <div class="dialog-actions">
+      {% if is_custom_data %}
+      <button type="button" class="btn btn-ghost dialog-reset" data-reset-trigger>Gunakan data sampel</button>
+      {% endif %}
+      <div class="dialog-actions-end">
+        <button type="button" class="btn btn-secondary" data-close-upload>Batal</button>
+        <button type="submit" class="btn btn-primary" data-upload-submit>Muat &amp; analisis</button>
+      </div>
+    </div>
+  </form>
+</dialog>
 </body>
 </html>

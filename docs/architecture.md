@@ -5,8 +5,8 @@ CSV ──load_sales()──▶ list[Sale] + CleaningReport ──build_report()
      app/data.py                                     app/analysis.py              └─▶ GET /api/report (same dict as JSON)
 ```
 
-- The CSV is read **once at startup** (FastAPI lifespan in `app/main.py`) and the report is kept in `app.state.report`. To pick up a new file, restart the process or container.
-- A bad file (missing column, unparseable value, fewer than two months) fails startup instead of serving wrong numbers.
+- The default CSV is read **once at startup** (FastAPI lifespan in `app/main.py`) and kept in `app.state.default_report` and `app.state.report`. Users can also upload another 15-column CSV in the browser (`POST /api/upload`), which parses and cleans the file in memory (`load_sales_text`) and updates `app.state.report` without touching disk; `POST /api/report/reset` restores `app.state.default_report` immediately.
+- A bad startup file (missing column, unparseable value, fewer than two months) fails startup instead of serving wrong numbers; a bad uploaded CSV returns `400`/`413` with an actionable Bahasa Indonesia message while keeping the active report intact.
 - Every page is complete server-rendered HTML that works without JavaScript.
 
 ## Pages and templates
@@ -34,9 +34,12 @@ All three extend `base.html` (collapsible left sidebar `#sidebar` + compact mobi
 | Method & path | Returns |
 |---|---|
 | `GET /`, `/wilayah-merek`, `/outlet-terlemah` | HTML pages (see above); anything else is 404 |
-| `GET /api/report` | The full report as JSON (totals, regions, brands, outlets, weakest, weakest_analysis, data_quality, telegram_summary) |
+| `GET /api/report` | The full active report as JSON (totals, regions, brands, outlets, weakest, weakest_analysis, data_quality, telegram_summary) |
+| `POST /api/upload` | Accepts a custom `.csv` (`multipart/form-data` field `file` or `text/csv`, max 10 MiB), cleans & validates the 15 columns + >= 2 months in memory, and swaps `app.state.report` |
+| `POST /api/report/reset` | Restores `app.state.report` back to `app.state.default_report` |
+| `GET /api/sample-csv` | Downloads the bundled sample CSV (`data/dua_kelinci_sample_sales_sep_oct_2026.csv`) as a template |
 | `GET /healthz` | `{"status": "ok"}`; used by the Docker `HEALTHCHECK` |
-| `GET /static/...` | `app.css`, `app.js`, the Inter font |
+| `GET /static/...` | `app.css`, `app.js`, self-hosted fonts & logo |
 
 ## Configuration
 
@@ -45,6 +48,7 @@ All three extend `base.html` (collapsible left sidebar `#sidebar` + compact mobi
 | `DATA_PATH` | env var | `data/dua_kelinci_sample_sales_sep_oct_2026.csv` |
 | `MIN_BASE_SALES_IDR` | `app/config.py` | 5 000 000 |
 | `WEAK_OUTLET_COUNT` | `app/config.py` | 5 |
+| `MAX_UPLOAD_BYTES` | `app/config.py` | 10 485 760 (10 MiB) |
 
 ## Deployment (Docker)
 
