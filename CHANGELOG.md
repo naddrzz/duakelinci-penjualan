@@ -1,8 +1,11 @@
 # Changelog
 
-## 1.7.1 — 2026-11-23
+## 1.8.0 — 2026-11-23
 
-- Reformatted `telegram_summary()` into a scannable multi-line BLUF layout (headline, bulleted KPIs, and a numbered 5-outlet watch list with both `%` and rupiah change) so it reads in seconds on mobile Telegram without losing any context; documented primary-source research in `docs/research-weakest-outlet-and-telegram.md`.
+- **Dual-Lens FMCG weakest-outlet model & adaptive Q1 floor** (`app/analysis.py`, `outlet_terlemah.html`):
+  - Replaced the static base-sales cutoff with a data-driven 1st-quartile (`Q1 / P25`) materiality floor (`adaptive_base_floor()`, resolving to `Rp 5.000.000` from `Q1 = Rp 4.927.700` on the sample CSV and adapting automatically on custom CSV uploads).
+  - Added a segmented **Kemerosotan %** vs **Kehilangan Rp** (*Revenue-at-Risk*) switcher at the top of `/outlet-terlemah`, per-outlet invoice & SKU movement (`Sep→Okt`), and an **Empirical Bayes Shrinkage** cross-validation card.
+- **Telegram summary**: includes both the numbered top-5 `%` erosion outlets and a concise callout for top key-account rupiah drops (`Grosir Sentosa`, `Grosir Sumber Alam`) when distinct from the `%` list.
 
 ## 1.7.0 — 2026-11-23
 

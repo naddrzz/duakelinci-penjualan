@@ -2,9 +2,11 @@
 
 Newest first. Each entry: what was decided, why, and what would make us revisit it.
 
-## 2026-11-23 — Structured multi-line Telegram summary (requested by the user)
+## 2026-11-23 — Dual-Lens FMCG weakest-outlet evaluation, adaptive Q1 floor & structured Telegram summary (requested by the user)
 
-- Replaced the 435-character single-line Telegram paragraph in `telegram_summary()` (`app/analysis.py`) with a 3-block scannable message: standalone period headline, bulleted executive KPIs (`•`), and a vertical numbered list (`1.`–`5.`) of the weakest outlets including both `%` drop and `−Rp` drop. Backed by NN/g mobile scanning research, Smart Brevity / BLUF principles, and Telegram's `lineBreaks: .keep` clipboard paste specification (full citations in [research-weakest-outlet-and-telegram.md](research-weakest-outlet-and-telegram.md)).
+- **Dual-Lens FMCG evaluation (`/outlet-terlemah` & `app/analysis.py`)**: pairs **Kemerosotan % terdalam** (comparable-store velocity erosion for churn risk) with **Kehilangan Rp terbesar** (*Revenue-at-Risk* for key wholesaler accounts, capturing `68,5%` of total lost rupiah vs `21,0%` on `%` alone) behind a segmented lens switcher at the top of `/outlet-terlemah`, enriched with per-outlet invoice & SKU movement (`base -> current`) and an **Empirical Bayes Shrinkage** cross-check.
+- **Data-driven Q1 materiality floor (`adaptive_base_floor`)**: replaces the hardcoded `Rp 5 jt` cutoff with the 1st quartile (`P25`) of active base-month outlets (`Q1 = Rp 4.927.700` → rounded `Rp 5.000.000` on the sample CSV) grounded in De Moivre's equation ($\sigma_{\bar{x}} = \sigma/\sqrt{n}$), so uploaded custom CSVs of any currency scale adapt automatically without manual config changes.
+- **Structured multi-line Telegram summary (`telegram_summary()`)**: 3–4 scannable blocks (period headline, bulleted KPIs, numbered `1.`–`5.` `%` erosion watch list with `%` + `−Rp`, plus non-duplicate top key-account rupiah drops) backed by NN/g mobile scanning studies, Smart Brevity / BLUF, and Telegram's `lineBreaks: .keep` paste behavior (full citations in [research-weakest-outlet-and-telegram.md](research-weakest-outlet-and-telegram.md)).
 
 ## 2026-11-23 — In-memory custom CSV upload with stdlib multipart parsing (requested by the user)
 

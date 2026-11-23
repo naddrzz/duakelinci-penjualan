@@ -17,6 +17,6 @@ def report(sales):
         rows,
         cleaning,
         source=config.DATA_PATH.name,
-        min_base_idr=config.MIN_BASE_SALES_IDR,
+        min_base_idr=None,
         weak_count=config.WEAK_OUTLET_COUNT,
     )

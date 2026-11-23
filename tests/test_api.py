@@ -88,6 +88,9 @@ def test_outlet_terlemah_page_shows_calculation(client):
     for expected in (
         "Hasil dan hitungannya",
         'id="weakest-table"',
+        'id="risk-table"',
+        "data-lens-switch",
+        "faktur",
         "Aturan yang dipakai",
         "Cara menyaring 52 outlet",
         "Keluarkan 1 outlet baru",

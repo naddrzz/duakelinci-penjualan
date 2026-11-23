@@ -216,10 +216,36 @@
     });
   }
 
+  // ---------------------------------------------------------------- dual-lens switch on outlet terlemah
+  function initLensSwitch(root) {
+    const container = root.querySelector("[data-lens-root]");
+    const switcher = container?.querySelector("[data-lens-switch]");
+    if (!container || !switcher) return;
+    const panels = [...container.querySelectorAll("[data-lens-panel]")];
+    if (panels.length < 2) return;
+    switcher.hidden = false;
+
+    const sync = (animate = false) => {
+      const selected = switcher.querySelector("input:checked")?.value || "pct";
+      panels.forEach((panel) => {
+        const active = panel.dataset.lensPanel === selected;
+        panel.hidden = !active;
+        if (active && animate) {
+          panel.classList.remove("is-entering");
+          void panel.offsetWidth;
+          panel.classList.add("is-entering");
+        }
+      });
+    };
+    sync(false);
+    switcher.addEventListener("change", () => sync(true));
+  }
+
   function initPage(root) {
     initCopy(root);
     initSortable(root);
     initOutletTable(root);
+    initLensSwitch(root);
     initSegmented(root);
     initViewSwitch(root);
   }

@@ -12,32 +12,32 @@ Implemented in `app/analysis.py`; thresholds in `app/config.py`; tested in `test
 
 For each region and each brand: sales per month, total, change %, and share of grand total. Sorted by total, highest first. The first row is the "best" region/brand used in the Telegram text.
 
-## 2. Weakest outlets
+## 2. Weakest outlets (Dual-Lens FMCG + Adaptive Q1 Floor)
 
-**Rule:** the `WEAK_OUTLET_COUNT` (5) outlets with the largest **% decline** in sales from base to current month, among outlets whose base-month sales are at least `MIN_BASE_SALES_IDR` (Rp 5.000.000). Only declining outlets qualify, so fewer than 5 may be listed. Ties break on larger rupiah drop. An outlet with no current-month sales counts as −100 %.
+Full primary-source justification lives in [research-weakest-outlet-and-telegram.md](research-weakest-outlet-and-telegram.md).
 
-**Why this rule** (the brief left "weakest" undefined):
+**Primary lens (`report.weakest` — Steepest % Erosion on Comparable Stores >= Q1):**
+- Exclude new outlets (`base <= 0`), matching the retail *Comparable / Same-Store Sales* standard.
+- Compute an **adaptive base-month materiality floor** from the **1st quartile (`Q1 / P25`)** of active base-month outlets (`adaptive_base_floor()`), rounded cleanly to 2 significant figures. On the sample CSV (`51` active outlets), raw `Q1 = Rp 4.927.700` → **`Rp 5.000.000`** (`13` noisy bottom-quartile outlets excluded, `38` eligible). On custom uploaded CSVs of smaller or larger scale, the floor scales automatically (and drops to `0` when `< 4` active outlets exist).
+- Among eligible declining outlets (`change_pct < 0`), take the `WEAK_OUTLET_COUNT` (5) steepest `%` declines (ties break on rupiah drop). Each outlet also tracks operational movement (`base_invoices -> current_invoices` and `base_skus -> current_skus`).
 
-- *Lowest total sales* only finds small outlets. The 5 lowest on the sample all sold < Rp 1,3 jt and 4 of them grew.
-- *Largest rupiah drop* is dominated by big wholesalers that are still top outlets (Grosir Sentosa lost Rp 31,6 jt but is #2 by total).
-- *% decline* finds outlets that are fading regardless of size, but tiny outlets produce noisy percentages (Rp 798 rb → 360 rb = −55 %). The Rp 5 jt floor (~60 % of the median outlet's September sales, Rp 8,0 jt) removes that noise.
-- Outlets with no base-month sales are new, not weak, and are excluded.
+**Complementary lens (`report.weakest_analysis.revenue_at_risk` — Largest Rupiah Contraction / Revenue-at-Risk):**
+- Ranks active declining outlets by absolute rupiah loss (`change_idr` ascending). While the `%` lens catches mid-size retail shops losing 48–69% of velocity (`21,0%` of total lost rupiah), the Rupiah lens catches key wholesaler accounts (`Grosir Sentosa −Rp 31,6 jt`, `Grosir Sumber Alam −Rp 24,3 jt`) that drive **`68,5%`** of the network's total `Rp 116,4 jt` decline.
+- Cross-validated against **Empirical Bayes Shrinkage** (`report.weakest_analysis.empirical_bayes`, prior weight $C = \text{median base sales Rp 8.491.500}$), which surfaces both retail steep drops and top wholesaler drops simultaneously.
 
-The page also lists every outlet with its rupiah and % change, so large rupiah drops stay visible.
+**Result on the sample data (Primary % Erosion Lens):**
 
-**Result on the sample data:**
-
-| # | Outlet | Branch | Sep | Okt | Change |
-|---|---|---|---|---|---|
-| 1 | OUT1043 Minimarket Sido Muncul | Palembang | 9.181.700 | 2.873.700 | −68,7 % |
-| 2 | OUT1022 Toko Bintang | Semarang | 8.764.300 | 3.223.100 | −63,2 % |
-| 3 | OUT1041 Toko Anugerah | Palembang | 12.494.900 | 5.909.600 | −52,7 % |
-| 4 | OUT1048 Toko Mekar | Banjarmasin | 5.143.700 | 2.473.900 | −51,9 % |
-| 5 | OUT1001 Toko Sinar Abadi | Jakarta Barat | 6.929.900 | 3.579.000 | −48,4 % |
+| # | Outlet | Branch | Invoices / SKUs (Sep→Okt) | Sep | Okt | Change |
+|---|---|---|---|---|---|---|
+| 1 | OUT1043 Minimarket Sido Muncul | Palembang | 5→3 inv · 9→5 SKU | 9.181.700 | 2.873.700 | −68,7 % |
+| 2 | OUT1022 Toko Bintang | Semarang | 6→4 inv · 10→5 SKU | 8.764.300 | 3.223.100 | −63,2 % |
+| 3 | OUT1041 Toko Anugerah | Palembang | 12→6 inv · 10→8 SKU | 12.494.900 | 5.909.600 | −52,7 % |
+| 4 | OUT1048 Toko Mekar | Banjarmasin | 5→3 inv · 8→3 SKU | 5.143.700 | 2.473.900 | −51,9 % |
+| 5 | OUT1001 Toko Sinar Abadi | Jakarta Barat | 6→3 inv · 9→7 SKU | 6.929.900 | 3.579.000 | −48,4 % |
 
 ## 3. Telegram summary
 
-Scannable multi-line message in Bahasa Indonesia (BLUF headline + bulleted KPIs + numbered watch list), generated from the report (never hard-coded): period headline, total net sales with direction (naik/turun/stabil), base → current comparison, best region and best brand with share, and the weakest outlets numbered `1..N` as `name, branch (−N% · −Rp X jt)`. Built by `telegram_summary()`. See [research-weakest-outlet-and-telegram.md](research-weakest-outlet-and-telegram.md) for the UX & platform evidence behind this layout. The app only displays it with a copy button; it never sends anything.
+Scannable multi-line message in Bahasa Indonesia (BLUF headline + bulleted KPIs + numbered `%` watch list + key-account Rupiah loss callout when distinct), generated from the report (never hard-coded). Built by `telegram_summary()`. The app only displays it with a copy button; it never sends anything.
 
 Sample output:
 
@@ -49,12 +49,16 @@ Total penjualan bersih: Rp 1,73 miliar (naik 3,6%)
 • Wilayah terbaik: Jabodetabek — Rp 495,8 jt (28,7% dari total)
 • Merek terbaik: Kacang Dua Kelinci — Rp 739,8 jt (42,9% dari total)
 
-Outlet perlu diperhatikan (penurunan terbesar Sep → Okt):
+Outlet perlu perhatian — penurunan % terdalam (Sep → Okt):
 1. Minimarket Sido Muncul, Palembang (−69% · −Rp 6,3 jt)
 2. Toko Bintang, Semarang (−63% · −Rp 5,5 jt)
 3. Toko Anugerah, Palembang (−53% · −Rp 6,6 jt)
 4. Toko Mekar, Banjarmasin (−52% · −Rp 2,7 jt)
 5. Toko Sinar Abadi, Jakarta Barat (−48% · −Rp 3,4 jt)
+
+Penurunan rupiah terbesar (akun besar):
+• Grosir Sentosa, Bandung (−Rp 31,6 jt · −33%)
+• Grosir Sumber Alam, Solo (−Rp 24,3 jt · −31%)
 ```
 
 ## Reference numbers (sample file)

@@ -10,77 +10,99 @@
 {%- set small_example = a.small|rejectattr("change_pct", "none")|sort(attribute="change_pct")|first -%}
 {%- set ranked_ids = r.outlets|sort(attribute="total", reverse=true)|map(attribute="outlet_id")|list -%}
 {%- set lowest_up = a.lowest_total|selectattr("change_idr", "gt", 0)|list|length -%}
-{%- set drop_grosir = a.largest_drop_idr|selectattr("outlet_type", "equalto", "Grosir")|list|length -%}
 
 {% call m.page_head(
      "Outlet terlemah",
-     r.weakest|length ~ " outlet yang penjualannya paling merosot dari " ~ base|month_label ~ " ke " ~ current|month_label ~ ", beserta cara memilih dan hitungannya."
+     "Evaluasi dua lensa standar distribusi FMCG (" ~ base|month_label ~ " → " ~ current|month_label ~ "): kemerosotan persentase terdalam untuk risiko churn ritel, dan kehilangan rupiah terbesar untuk kebocoran omzet akun besar."
    ) %}
   <a class="btn btn-secondary" href="/#outlet">Lihat semua {{ a.total }} outlet &rarr;</a>
 {% endcall %}
 
+{%- macro lens_table(items, table_id, caption_text, default_sort_col) -%}
+<div class="table-wrap" role="region" aria-labelledby="hasil" tabindex="0">
+  <table class="data sortable" id="{{ table_id }}">
+    <caption class="sr-only">{{ caption_text }}</caption>
+    <thead>
+      <tr>
+        {{ m.sort_th("Outlet", "text", cls="sticky-col") }}
+        {{ m.sort_th("Cabang & aktivitas", "text") }}
+        {{ m.sort_th(base|month_label, "num", cls="num") }}
+        {{ m.sort_th(current|month_label, "num", cls="num") }}
+        {{ m.sort_th("Selisih", "num", "ascending" if default_sort_col == "idr" else none, "num") }}
+        {{ m.sort_th("Perubahan & hitungan", "num", "ascending" if default_sort_col == "pct" else none, "num") }}
+        {{ m.sort_th("Sisa dari " ~ (base|month_short), "num", cls="share-col") }}
+      </tr>
+    </thead>
+    <tbody>
+      {%- for o in items %}
+      {%- set kept = o.current / o.base * 100 %}
+      <tr>
+        <th scope="row" class="sticky-col" data-value="{{ o.name }}">
+          <div class="weak-outlet">
+            <span class="rank-chip" aria-hidden="true">{{ loop.index }}</span>
+            <div>
+              <span class="outlet-name">{{ o.name }}</span>
+              <span class="outlet-id">{{ o.outlet_id }} · {{ o.outlet_type }}</span>
+            </div>
+          </div>
+        </th>
+        <td data-value="{{ o.branch }}">
+          <span class="outlet-name">{{ o.branch }} <span class="muted">· {{ o.region }}</span></span>
+          <span class="outlet-id">{{ o.base_invoices }}&rarr;{{ o.current_invoices }} faktur · {{ o.base_skus }}&rarr;{{ o.current_skus }} SKU</span>
+        </td>
+        <td class="num" data-value="{{ o.base }}">{{ o.base|rp }}</td>
+        <td class="num" data-value="{{ o.current }}">{{ o.current|rp }}</td>
+        <td class="num strong" data-value="{{ o.change_idr }}">{{ o.change_idr|rp }}</td>
+        <td class="num" data-value="{{ o.change_pct }}">
+          <div class="calc-cell">
+            {{ m.pill(o.change_pct) }}
+            <span class="calc-sub">{{ o.change_idr|rp }} ÷ {{ o.base|rp }} × 100</span>
+          </div>
+        </td>
+        <td class="share-col" data-value="{{ '%.2f'|format(kept) }}">
+          <span class="share">
+            {{ m.bar(kept if kept < 100 else 100, o.change_pct) }}
+            <span class="num">{{ kept|pct(digits=0, signed=false) }}</span>
+          </span>
+        </td>
+      </tr>
+      {%- endfor %}
+    </tbody>
+  </table>
+</div>
+{%- endmacro -%}
+
 <div class="stack">
-  <section class="card table-section" aria-labelledby="hasil">
-    <div class="card-head">
+  <section class="card table-section" aria-labelledby="hasil" data-lens-root>
+    <div class="card-head lens-head">
       <div>
         <h2 id="hasil">Hasil dan hitungannya</h2>
-        <p class="card-sub">Penurunan persentase terbesar pada outlet dengan penjualan {{ base|month_short }} minimal {{ min_base|rp }}. Pilih judul kolom untuk mengurutkan.</p>
+        <p class="card-sub">Bandingkan kemerosotan laju toko (%) dan kebocoran nilai rupiah (Rp). Pilih judul kolom untuk mengurutkan.</p>
       </div>
+      {% if r.weakest and a.revenue_at_risk %}
+      <fieldset class="segmented" data-lens-switch hidden>
+        <legend>Lensa evaluasi</legend>
+        <span class="seg-indicator" aria-hidden="true"></span>
+        <label><input type="radio" name="weak-lens" value="pct" checked>Kemerosotan % <span class="count">{{ r.weakest|length }}</span></label>
+        <label><input type="radio" name="weak-lens" value="idr">Kehilangan Rp <span class="count">{{ a.revenue_at_risk|length }}</span></label>
+      </fieldset>
+      {% endif %}
     </div>
-    {% if r.weakest %}
-    <div class="table-wrap" role="region" aria-labelledby="hasil" tabindex="0">
-      <table class="data sortable" id="weakest-table">
-        <caption class="sr-only">Daftar {{ r.weakest|length }} outlet terlemah beserta penjualan {{ base|month_label }}, {{ current|month_label }}, selisih, dan hitungannya</caption>
-        <thead>
-          <tr>
-            {{ m.sort_th("Outlet", "text", cls="sticky-col") }}
-            {{ m.sort_th("Cabang & wilayah", "text") }}
-            {{ m.sort_th(base|month_label, "num", cls="num") }}
-            {{ m.sort_th(current|month_label, "num", cls="num") }}
-            {{ m.sort_th("Selisih", "num", cls="num") }}
-            {{ m.sort_th("Perubahan & hitungan", "num", "ascending", "num") }}
-            {{ m.sort_th("Sisa dari " ~ (base|month_short), "num", cls="share-col") }}
-          </tr>
-        </thead>
-        <tbody>
-          {%- for o in r.weakest %}
-          {%- set kept = o.current / o.base * 100 %}
-          <tr>
-            <th scope="row" class="sticky-col" data-value="{{ o.name }}">
-              <div class="weak-outlet">
-                <span class="rank-chip" aria-hidden="true">{{ loop.index }}</span>
-                <div>
-                  <span class="outlet-name">{{ o.name }}</span>
-                  <span class="outlet-id">{{ o.outlet_id }} · {{ o.outlet_type }}</span>
-                </div>
-              </div>
-            </th>
-            <td data-value="{{ o.branch }}">
-              <span class="outlet-name">{{ o.branch }}</span>
-              <span class="outlet-id">{{ o.region }}</span>
-            </td>
-            <td class="num" data-value="{{ o.base }}">{{ o.base|rp }}</td>
-            <td class="num" data-value="{{ o.current }}">{{ o.current|rp }}</td>
-            <td class="num strong" data-value="{{ o.change_idr }}">{{ o.change_idr|rp }}</td>
-            <td class="num" data-value="{{ o.change_pct }}">
-              <div class="calc-cell">
-                {{ m.pill(o.change_pct) }}
-                <span class="calc-sub">{{ o.change_idr|rp }} ÷ {{ o.base|rp }} × 100</span>
-              </div>
-            </td>
-            <td class="share-col" data-value="{{ '%.2f'|format(kept) }}">
-              <span class="share">
-                {{ m.bar(kept if kept < 100 else 100, o.change_pct) }}
-                <span class="num">{{ kept|pct(digits=0, signed=false) }}</span>
-              </span>
-            </td>
-          </tr>
-          {%- endfor %}
-        </tbody>
-      </table>
+
+    <div class="lens-panel" data-lens-panel="pct">
+      {% if r.weakest %}
+      <p class="lens-note"><strong>Lensa kemerosotan laju (%):</strong> menemukan ritel aktif{% if min_base > 0 %} (penjualan {{ base|month_short }} &ge; {{ min_base|rp }}){% endif %} yang ordernya paling anjlok dan berisiko berhenti beli. Ke-{{ r.weakest|length }} outlet ini mencakup <strong>{{ a.weakest_drop_idr|rp_short }}</strong> ({{ a.weakest_drop_share_pct|pct(signed=false) }}) dari total penurunan {{ a.total_drop_idr|rp_short }}.</p>
+      {{ lens_table(r.weakest, "weakest-table", "Daftar outlet dengan kemerosotan persentase terdalam beserta hitungannya", "pct") }}
+      {% else %}
+      <p class="muted">Tidak ada outlet memenuhi ambang yang penjualannya turun dari {{ base|month_short }} ke {{ current|month_short }}.</p>
+      {% endif %}
     </div>
-    {% else %}
-    <p class="muted">Tidak ada outlet yang penjualannya turun dari {{ base|month_short }} ke {{ current|month_short }}.</p>
+
+    {% if a.revenue_at_risk %}
+    <div class="lens-panel" data-lens-panel="idr">
+      <p class="lens-note"><strong>Lensa kehilangan rupiah (Revenue-at-Risk):</strong> menemukan akun besar/grosir dengan kebocoran omzet absolut terbesar bagi cabang. Ke-{{ a.revenue_at_risk|length }} outlet ini menyumbang <strong>{{ a.risk_drop_idr|rp_short }}</strong> ({{ a.risk_drop_share_pct|pct(signed=false) }}) dari total penurunan {{ a.total_drop_idr|rp_short }}.</p>
+      {{ lens_table(a.revenue_at_risk, "risk-table", "Daftar outlet dengan kehilangan rupiah terbesar beserta hitungannya", "idr") }}
+    </div>
     {% endif %}
   </section>
 
@@ -89,7 +111,7 @@
       <div class="card-head">
         <h2 id="aturan">Aturan yang dipakai</h2>
       </div>
-      <p>Outlet terlemah adalah outlet dengan <strong>penurunan penjualan bersih (%) terbesar</strong> dari {{ base|month_label }} ke {{ current|month_label }}.</p>
+      <p>Lensa utama memakai standar ritel <strong>Comparable Store Sales</strong> dengan <strong>ambang kuartil bawah adaptif (Q1)</strong> agar bebas dari bias penyebut kecil (persamaan De Moivre, &sigma;<sub>x&#772;</sub> = &sigma; &divide; &radic;n).</p>
       <div class="formula" role="group" aria-label="Rumus perubahan">
         <span class="formula-label">Rumus</span>
         <span class="formula-body">Perubahan (%) = (Penjualan {{ current|month_short }} − Penjualan {{ base|month_short }}) ÷ Penjualan {{ base|month_short }} × 100</span>
@@ -97,15 +119,15 @@
       <ul class="checks">
         <li>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
-          <span>Penjualan {{ base|month_short }} minimal <strong>{{ min_base|rp }}</strong>, supaya outlet sangat kecil tidak mendistorsi persentase.</span>
+          <span>{% if min_base > 0 %}Ambang dasar adaptif <strong>{{ min_base|rp }}</strong> (diturunkan dari kuartil bawah Q1 = {{ r.weakest_rule.q1_base_idr|rp }} pada {{ after_new }} outlet aktif), otomatis menyesuaikan skala saat mengunggah CSV lain.{% else %}Seluruh {{ after_new }} outlet aktif disertakan (jumlah outlet di bawah 4, tanpa pemangkasan kuartil).{% endif %}</span>
         </li>
         <li>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
-          <span>Hanya menghitung outlet yang penjualannya <strong>turun</strong>.</span>
+          <span>Hanya menghitung outlet sebanding yang penjualannya <strong>turun</strong> dari {{ base|month_short }} ke {{ current|month_short }}.</span>
         </li>
         <li>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
-          <span>Ambil <strong>{{ r.weakest_rule.count }} outlet</strong> dengan penurunan persen paling besar.</span>
+          <span>Didampingi lensa <strong>Kehilangan Rp terbesar</strong> agar kebocoran omzet di akun grosir besar tetap terpantau penuh.</span>
         </li>
       </ul>
     </section>
@@ -168,7 +190,7 @@
   <section aria-labelledby="pembanding">
     <div class="section-head">
       <h2 id="pembanding">Kenapa tidak memakai cara lain?</h2>
-      <p class="section-lede">Dua definisi lain yang sering dipakai, dengan hasilnya pada data yang sama.</p>
+      <p class="section-lede">Perbandingan terhadap metode omzet terendah dan uji silang statistik Empirical Bayes pada data yang sama.</p>
     </div>
     <div class="grid-2 compare">
       <div class="card">
@@ -178,24 +200,19 @@
           <li><span>{{ o.name }} <span class="muted">· {{ o.branch }}</span></span><span class="num">{{ o.total|rp_short }} {{ m.pill(o.change_pct, digits=0) }}</span></li>
           {%- endfor %}
         </ol>
-        <p class="verdict"><strong>{{ lowest_up }} dari {{ a.lowest_total|length }}</strong> outlet ini justru naik. Mereka kecil, bukan melemah.</p>
+        <p class="verdict"><strong>{{ lowest_up }} dari {{ a.lowest_total|length }}</strong> outlet ini justru naik. Mereka kecil dari awal, bukan sedang melemah.</p>
       </div>
       <div class="card">
-        <h3 class="card-title">Penurunan rupiah terbesar</h3>
+        <h3 class="card-title">Uji silang Empirical Bayes Shrinkage</h3>
         <ol class="plain-list ranked">
-          {%- for o in a.largest_drop_idr %}
-          <li><span>{{ o.name }} <span class="muted">· {{ o.branch }}</span></span><span class="num">{{ o.change_idr|rp_short }} {{ m.pill(o.change_pct, digits=0) }}</span></li>
+          {%- for o in a.empirical_bayes %}
+          <li><span>{{ o.name }} <span class="muted">· {{ o.branch }} ({{ o.outlet_type }})</span></span><span class="num">{{ o.change_idr|rp_short }} {{ m.pill(o.eb_change_pct, digits=1) }}</span></li>
           {%- endfor %}
         </ol>
-        {%- set top_drop = a.largest_drop_idr[0] %}
-        {% if top_drop.change_idr < 0 %}
-        <p class="verdict"><strong>{{ drop_grosir }} dari {{ a.largest_drop_idr|length }}</strong> adalah grosir. {{ top_drop.name }} masih outlet terbesar ke-{{ ranked_ids.index(top_drop.outlet_id) + 1 }} dari {{ a.total }} meski turun {{ (0 - top_drop.change_idr)|rp_short }}: angkanya besar karena outletnya besar.</p>
-        {% else %}
-        <p class="verdict">Tidak ada outlet yang mengalami penurunan rupiah pada periode ini.</p>
-        {% endif %}
+        <p class="verdict">Penyesuaian Bayesian dengan bobot median otomatis memunculkan <strong>toko ritel yang anjlok tajam</strong> sekaligus <strong>akun grosir beromzet besar yang bocor</strong>—memvalidasi mengapa kedua lensa di atas perlu dipantau bersama.</p>
       </div>
     </div>
-    <p class="conclusion">Persentase dengan ambang minimal menemukan outlet yang benar-benar merosot, berapa pun ukurannya. Daftar lengkap outlet ada di <a href="/#outlet">tabel semua outlet di Ringkasan</a>.</p>
+    <p class="conclusion">Kombinasi dua lensa (kemerosotan % di atas Q1 dan kehilangan Rp absolut) memastikan risiko berhentinya toko ritel maupun kebocoran omzet grosir tertangkap tanpa titik buta. Daftar lengkap ada di <a href="/#outlet">tabel semua outlet di Ringkasan</a>.</p>
   </section>
 </div>
 {% endblock %}

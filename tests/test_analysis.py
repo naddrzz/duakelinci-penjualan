@@ -3,7 +3,7 @@ If the data file changes, update them together with docs/metrics.md."""
 
 import pytest
 
-from app.analysis import change_pct, weakest_outlets
+from app.analysis import adaptive_base_floor, change_pct, weakest_outlets
 from app.formatting import pct, period_label, rp, rp_short
 
 
@@ -41,10 +41,24 @@ def test_brands_ranked_and_complete(report):
 
 
 def test_weakest_outlets(report):
+    assert report["weakest_rule"]["min_base_idr"] == 5_000_000
+    assert report["weakest_rule"]["q1_base_idr"] == 4_927_700
+    assert report["weakest_rule"]["adaptive"] is True
     assert [o["outlet_id"] for o in report["weakest"]] == [
         "OUT1043", "OUT1022", "OUT1041", "OUT1048", "OUT1001",
     ]
     assert all(o["base"] >= report["weakest_rule"]["min_base_idr"] for o in report["weakest"])
+    assert report["weakest"][0]["base_invoices"] == 5
+    assert report["weakest"][0]["current_invoices"] == 3
+
+
+def test_adaptive_base_floor_scales_across_datasets():
+    small_warungs = [{"base": b} for b in (400_000, 480_000, 520_000, 900_000, 1_100_000, 1_400_000, 1_800_000, 2_200_000)]
+    floor_small, q1_small = adaptive_base_floor(small_warungs)
+    assert 450_000 <= floor_small <= 550_000 and q1_small > 0
+
+    tiny_count = [{"base": 1_000_000}, {"base": 2_000_000}]
+    assert adaptive_base_floor(tiny_count)[0] == 0
 
 
 def test_weakest_analysis_funnel(report):
@@ -57,6 +71,10 @@ def test_weakest_analysis_funnel(report):
     assert a["declining"] == 21
     assert [o["outlet_id"] for o in a["lowest_total"]][:2] == ["OUT1003", "OUT1026"]
     assert [o["outlet_id"] for o in a["largest_drop_idr"]][:2] == ["OUT1014", "OUT1025"]
+    assert [o["outlet_id"] for o in a["revenue_at_risk"]][:2] == ["OUT1014", "OUT1025"]
+    assert a["risk_drop_share_pct"] == pytest.approx(68.5, abs=0.2)
+    eb_ids = [o["outlet_id"] for o in a["empirical_bayes"]]
+    assert "OUT1043" in eb_ids and "OUT1014" in eb_ids
 
 
 def test_weakest_rule_edges():
@@ -77,7 +95,7 @@ def test_change_pct_without_base():
 
 def test_telegram_summary(report):
     text = report["telegram_summary"]
-    assert text.count("\n") >= 10
+    assert text.count("\n") >= 12
     for expected in (
         "Ringkasan Penjualan Dua Kelinci — Sep–Okt 2026",
         "Total penjualan bersih: Rp 1,73 miliar (naik 3,6%)",
@@ -86,6 +104,8 @@ def test_telegram_summary(report):
         "Kacang Dua Kelinci — Rp 739,8 jt (42,9% dari total)",
         "1. Minimarket Sido Muncul, Palembang (−69% · −Rp 6,3 jt)",
         "5. Toko Sinar Abadi, Jakarta Barat (−48% · −Rp 3,4 jt)",
+        "Penurunan rupiah terbesar (akun besar):",
+        "Grosir Sentosa, Bandung (−Rp 31,6 jt · −33%)",
     ):
         assert expected in text
 

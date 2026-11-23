@@ -6,9 +6,29 @@ Metric definitions live in docs/metrics.md; keep the two in sync.
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import asdict
+import statistics
 
 from .data import CleaningReport, Sale
 from .formatting import month_short, period_label, pct, rp_short
+
+
+def adaptive_base_floor(outlets: list[dict]) -> tuple[int, int]:
+    """Compute a data-driven base-month materiality floor from the 1st quartile (Q1 / P25)
+    of active base-month outlets to suppress small-denominator noise (De Moivre's equation).
+
+    Returns `(rounded_floor_idr, raw_q1_idr)`. For tiny custom datasets (< 4 active outlets),
+    no quartile trimming is needed so the floor is 0.
+    """
+    active_bases = sorted(o["base"] for o in outlets if o["base"] > 0)
+    if len(active_bases) < 4:
+        q1_raw = active_bases[0] if active_bases else 0
+        return 0, q1_raw
+    q1_raw = int(round(statistics.quantiles(active_bases, n=4)[0]))
+    if q1_raw <= 0:
+        return 0, 0
+    digits = len(str(q1_raw))
+    step = (5 if q1_raw >= 3 * (10 ** (digits - 1)) else 1) * (10 ** max(0, digits - 2))
+    return int(round(q1_raw / step) * step), q1_raw
 
 
 def change_pct(base: int, current: int) -> float | None:
@@ -41,15 +61,19 @@ def breakdown(rows: list[Sale], key: Callable[[Sale], str], months: list[str]) -
 
 
 def outlet_table(rows: list[Sale], base: str, current: str) -> list[dict]:
-    """Every outlet with base vs current month net sales, worst % change first.
+    """Every outlet with base vs current month net sales, operational activity, and % change.
 
     Outlets are keyed by outlet_id because outlet names are not unique.
     Outlets with no base-month sales (new outlets) sort last.
     """
     outlets: dict[str, dict] = {}
+    inv_sets: dict[str, tuple[set[str], set[str]]] = {}
+    sku_sets: dict[str, tuple[set[str], set[str]]] = {}
+
     for sale in rows:
-        o = outlets.setdefault(sale.outlet_id, {
-            "outlet_id": sale.outlet_id,
+        oid = sale.outlet_id
+        o = outlets.setdefault(oid, {
+            "outlet_id": oid,
             "name": sale.outlet_name,
             "branch": sale.branch,
             "region": sale.region,
@@ -57,16 +81,41 @@ def outlet_table(rows: list[Sale], base: str, current: str) -> list[dict]:
             "base": 0,
             "current": 0,
         })
+        b_inv, c_inv = inv_sets.setdefault(oid, (set(), set()))
+        b_sku, c_sku = sku_sets.setdefault(oid, (set(), set()))
         if sale.month == base:
             o["base"] += sale.net_sales_idr
+            b_inv.add(sale.invoice_no)
+            if sale.qty_carton > 0:
+                b_sku.add(sale.sku)
         elif sale.month == current:
             o["current"] += sale.net_sales_idr
+            c_inv.add(sale.invoice_no)
+            if sale.qty_carton > 0:
+                c_sku.add(sale.sku)
+
+    active_bases = [o["base"] for o in outlets.values() if o["base"] > 0]
+    eb_prior_c = statistics.median(active_bases) if active_bases else 0.0
+    total_base = sum(o["base"] for o in outlets.values())
+    total_curr = sum(o["current"] for o in outlets.values())
+    pop_ratio = total_curr / total_base if total_base > 0 else 1.0
 
     table = []
-    for o in outlets.values():
+    for oid, o in outlets.items():
+        b_inv, c_inv = inv_sets[oid]
+        b_sku, c_sku = sku_sets[oid]
+        o["base_invoices"] = len(b_inv)
+        o["current_invoices"] = len(c_inv)
+        o["base_skus"] = len(b_sku)
+        o["current_skus"] = len(c_sku)
         o["total"] = o["base"] + o["current"]
         o["change_idr"] = o["current"] - o["base"]
         o["change_pct"] = change_pct(o["base"], o["current"])
+        o["eb_change_pct"] = (
+            ((o["current"] + eb_prior_c * pop_ratio) / (o["base"] + eb_prior_c) - 1) * 100
+            if o["base"] > 0 and (o["base"] + eb_prior_c) > 0
+            else None
+        )
         table.append(o)
     table.sort(key=lambda o: (o["change_pct"] is None, o["change_pct"] or 0, o["change_idr"]))
     return table
@@ -84,25 +133,37 @@ def weakest_outlets(outlets: list[dict], min_base_idr: int, count: int) -> list[
 
 
 def weakest_analysis(outlets: list[dict], min_base_idr: int, count: int) -> dict:
-    """How the weakest-outlet rule narrows all outlets down, step by step, plus the
-    top `count` under two alternative definitions, for the explanation page."""
+    """How the weakest-outlet rule narrows all outlets down, step by step, plus
+    complementary FMCG lenses (steepest rupiah revenue loss, Empirical Bayes ranking,
+    and lowest total sales for methodology comparison)."""
     new = [o for o in outlets if o["base"] <= 0]
     small = [o for o in outlets if 0 < o["base"] < min_base_idr]
     eligible = [o for o in outlets if o["base"] >= min_base_idr]
     declining = [o for o in eligible if o["change_idr"] < 0]
+    all_declining = [o for o in outlets if o["base"] > 0 and o["change_idr"] < 0]
+    total_drop_idr = sum(-o["change_idr"] for o in all_declining)
+    top_drop_declining = sorted(all_declining, key=lambda o: (o["change_idr"], o["change_pct"] or 0))[:count]
+    eb_declining = sorted(
+        all_declining,
+        key=lambda o: (o["eb_change_pct"] if o["eb_change_pct"] is not None else 0, o["change_idr"]),
+    )[:count]
     return {
         "total": len(outlets),
         "new": new,
         "small": sorted(small, key=lambda o: o["base"]),
         "eligible": len(eligible),
         "declining": len(declining),
+        "all_declining_count": len(all_declining),
+        "total_drop_idr": total_drop_idr,
         "lowest_total": sorted(outlets, key=lambda o: o["total"])[:count],
         "largest_drop_idr": sorted(outlets, key=lambda o: o["change_idr"])[:count],
+        "revenue_at_risk": top_drop_declining,
+        "empirical_bayes": eb_declining,
     }
 
 
 def telegram_summary(report: dict) -> str:
-    """Scannable multi-line summary for Telegram (Bahasa Indonesia, BLUF + numbered list)."""
+    """Scannable multi-line summary for Telegram (Bahasa Indonesia, BLUF + dual FMCG watch lenses)."""
     base, current = report["period"]["base"], report["period"]["current"]
     totals = report["totals"]
     region, brand = report["regions"][0], report["brands"][0]
@@ -123,11 +184,29 @@ def telegram_summary(report: dict) -> str:
         "",
     ]
     weakest = report["weakest"]
+    rev_risk = report["weakest_analysis"]["revenue_at_risk"]
     if weakest:
         lines.append(
-            f"Outlet perlu diperhatikan (penurunan terbesar {month_short(base)} → {month_short(current)}):"
+            f"Outlet perlu perhatian — penurunan % terdalam ({month_short(base)} → {month_short(current)}):"
         )
         for idx, o in enumerate(weakest, start=1):
+            lines.append(
+                f"{idx}. {o['name']}, {o['branch']} ({pct(o['change_pct'], digits=0)} · {rp_short(o['change_idr'])})"
+            )
+        weak_ids = {o["outlet_id"] for o in weakest}
+        extra_big_drops = [o for o in rev_risk[:3] if o["outlet_id"] not in weak_ids]
+        if extra_big_drops:
+            lines.append("")
+            lines.append("Penurunan rupiah terbesar (akun besar):")
+            for o in extra_big_drops:
+                lines.append(
+                    f"• {o['name']}, {o['branch']} ({rp_short(o['change_idr'])} · {pct(o['change_pct'], digits=0)})"
+                )
+    elif rev_risk:
+        lines.append(
+            f"Outlet dengan penurunan penjualan ({month_short(base)} → {month_short(current)}):"
+        )
+        for idx, o in enumerate(rev_risk, start=1):
             lines.append(
                 f"{idx}. {o['name']}, {o['branch']} ({pct(o['change_pct'], digits=0)} · {rp_short(o['change_idr'])})"
             )
@@ -140,13 +219,14 @@ def build_report(
     rows: list[Sale],
     cleaning: CleaningReport,
     source: str,
-    min_base_idr: int,
-    weak_count: int,
+    min_base_idr: int | None = None,
+    weak_count: int = 5,
 ) -> dict:
     """Everything the page and the API need, as JSON-serialisable data.
 
     Compares the last two months present in the data. Raises ValueError when the
-    data has fewer than two months.
+    data has fewer than two months. When `min_base_idr` is None, derives an adaptive
+    Q1 (25th-percentile) materiality floor from active base-month outlets.
     """
     months = sorted({sale.month for sale in rows})
     if len(months) < 2:
@@ -158,6 +238,19 @@ def build_report(
         by_month[sale.month] += sale.net_sales_idr
 
     outlets = outlet_table(rows, base, current)
+    auto_floor, q1_raw = adaptive_base_floor(outlets)
+    effective_floor = auto_floor if min_base_idr is None else min_base_idr
+
+    weak = weakest_outlets(outlets, effective_floor, weak_count)
+    analysis = weakest_analysis(outlets, effective_floor, weak_count)
+    total_drop = analysis["total_drop_idr"]
+    weak_drop_sum = sum(-o["change_idr"] for o in weak)
+    risk_drop_sum = sum(-o["change_idr"] for o in analysis["revenue_at_risk"])
+    analysis["weakest_drop_idr"] = weak_drop_sum
+    analysis["weakest_drop_share_pct"] = (weak_drop_sum / total_drop * 100) if total_drop > 0 else 0.0
+    analysis["risk_drop_idr"] = risk_drop_sum
+    analysis["risk_drop_share_pct"] = (risk_drop_sum / total_drop * 100) if total_drop > 0 else 0.0
+
     report = {
         "source": source,
         "period": {
@@ -179,9 +272,14 @@ def build_report(
         "regions": breakdown(rows, lambda s: s.region, months),
         "brands": breakdown(rows, lambda s: s.brand, months),
         "outlets": outlets,
-        "weakest_rule": {"min_base_idr": min_base_idr, "count": weak_count},
-        "weakest": weakest_outlets(outlets, min_base_idr, weak_count),
-        "weakest_analysis": weakest_analysis(outlets, min_base_idr, weak_count),
+        "weakest_rule": {
+            "min_base_idr": effective_floor,
+            "q1_base_idr": q1_raw,
+            "adaptive": min_base_idr is None,
+            "count": weak_count,
+        },
+        "weakest": weak,
+        "weakest_analysis": analysis,
         "data_quality": asdict(cleaning),
     }
     report["telegram_summary"] = telegram_summary(report)
