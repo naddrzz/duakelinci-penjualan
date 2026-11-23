@@ -4,9 +4,13 @@
 <span class="pill{% if v is none %}{% elif v < 0 %} pill-neg{% elif v > 0 %} pill-pos{% endif %}">{{ v|pct(digits=digits) }}</span>
 {%- endmacro -%}
 
-{%- macro bar(width_pct, change=none, aria_hidden=true) -%}
+{%- macro delta_text(v, digits=1) -%}
+<span class="delta{% if v is none %}{% elif v < 0 %} delta-neg{% elif v > 0 %} delta-pos{% endif %}">{{ v|pct(digits=digits) }}</span>
+{%- endmacro -%}
+
+{%- macro bar(width_pct, change=none, aria_hidden=true, lead=false) -%}
 {%- set w = 0 if width_pct < 0 else (100 if width_pct > 100 else width_pct) -%}
-<span class="bar{% if change is not none and change > 0 %} bar-pos{% elif change is not none and change < 0 %} bar-neg{% endif %}"{% if aria_hidden %} aria-hidden="true"{% endif %}><span style="width: {{ '%.1f'|format(w) }}%"></span></span>
+<span class="bar{% if lead %} bar-lead{% elif change is not none and change > 0 %} bar-pos{% elif change is not none and change < 0 %} bar-neg{% endif %}"{% if aria_hidden %} aria-hidden="true"{% endif %}><span style="width: {{ '%.1f'|format(w) }}%"></span></span>
 {%- endmacro -%}
 
 {%- macro sort_th(label, kind, sort=none, cls="") -%}
@@ -15,9 +19,12 @@
 </th>
 {%- endmacro -%}
 
-{%- macro page_head(title, meta) -%}
-<div class="page-head">
+{%- macro page_head(title, meta, eyebrow="") -%}
+<header class="page-head">
   <div class="page-head-main">
+    {%- if eyebrow %}
+    <span class="eyebrow">{{ eyebrow }}</span>
+    {%- endif %}
     <h1 tabindex="-1">{{ title }}</h1>
     <p class="page-meta">{{ meta }}</p>
   </div>
@@ -26,5 +33,5 @@
     {{ caller() }}
   </div>
   {%- endif %}
-</div>
+</header>
 {%- endmacro -%}

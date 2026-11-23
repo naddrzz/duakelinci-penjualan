@@ -8,219 +8,481 @@
 {%- set n_new, n_small = a.new|length, a.small|length -%}
 {%- set after_new = a.total - n_new -%}
 {%- set small_example = a.small|rejectattr("change_pct", "none")|sort(attribute="change_pct")|first -%}
-{%- set ranked_ids = r.outlets|sort(attribute="total", reverse=true)|map(attribute="outlet_id")|list -%}
-{%- set lowest_up = a.lowest_total|selectattr("change_idr", "gt", 0)|list|length -%}
-
-{% call m.page_head(
-     "Outlet terlemah",
-     "Evaluasi dua lensa standar distribusi FMCG (" ~ base|month_label ~ " → " ~ current|month_label ~ "): kemerosotan persentase terdalam untuk risiko churn ritel, dan kehilangan rupiah terbesar untuk kebocoran omzet akun besar."
-   ) %}
-  <a class="btn btn-secondary" href="/#outlet">Lihat semua {{ a.total }} outlet &rarr;</a>
-{% endcall %}
 
 {%- macro lens_table(items, table_id, caption_text, default_sort_col) -%}
 <div class="table-wrap" role="region" aria-labelledby="hasil" tabindex="0">
-  <table class="data sortable" id="{{ table_id }}">
+  <table class="data sortable numbered-table" id="{{ table_id }}">
     <caption class="sr-only">{{ caption_text }}</caption>
     <thead>
       <tr>
+        <th scope="col" class="idx-col"><span class="th-label th-center">#</span></th>
         {{ m.sort_th("Outlet", "text", cls="sticky-col") }}
-        {{ m.sort_th("Cabang & aktivitas", "text") }}
-        {{ m.sort_th(base|month_label, "num", cls="num") }}
-        {{ m.sort_th(current|month_label, "num", cls="num") }}
+        {{ m.sort_th("Cabang", "text") }}
+        {{ m.sort_th("Salesman", "text") }}
+        {{ m.sort_th(base|month_short, "num", cls="num") }}
+        {{ m.sort_th(current|month_short, "num", cls="num") }}
         {{ m.sort_th("Selisih", "num", "ascending" if default_sort_col == "idr" else none, "num") }}
-        {{ m.sort_th("Perubahan & hitungan", "num", "ascending" if default_sort_col == "pct" else none, "num") }}
-        {{ m.sort_th("Sisa dari " ~ (base|month_short), "num", cls="share-col") }}
+        {{ m.sort_th("Perubahan", "num", "ascending" if default_sort_col == "pct" else none, "num") }}
+        <th scope="col" class="action-col"><span class="th-label th-center">Aksi</span></th>
       </tr>
     </thead>
     <tbody>
       {%- for o in items %}
-      {%- set kept = o.current / o.base * 100 %}
-      <tr>
-        <th scope="row" class="sticky-col" data-value="{{ o.name }}">
-          <div class="weak-outlet">
-            <span class="rank-chip" aria-hidden="true">{{ loop.index }}</span>
-            <div>
-              <span class="outlet-name">{{ o.name }}</span>
-              <span class="outlet-id">{{ o.outlet_id }} · {{ o.outlet_type }}</span>
-            </div>
-          </div>
+      <tr data-peek-row="{{ o.outlet_id }}" data-search="{{ (o.name ~ ' ' ~ o.outlet_id ~ ' ' ~ o.outlet_type ~ ' ' ~ o.branch ~ ' ' ~ o.region ~ ' ' ~ o.salesman ~ ' ' ~ o.salesman_drop_note ~ ' ' ~ o.brands_label)|lower }}">
+        <td class="idx-col"><span class="row-idx" aria-hidden="true"></span></td>
+        <th scope="row" class="sticky-col" data-value="{{ o.name }}" title="{{ o.outlet_id }} · {{ o.outlet_type }}">
+          <span class="outlet-name">{{ o.name }}</span>
         </th>
-        <td data-value="{{ o.branch }}">
-          <span class="outlet-name">{{ o.branch }} <span class="muted">· {{ o.region }}</span></span>
-          <span class="outlet-id">{{ o.base_invoices }}&rarr;{{ o.current_invoices }} faktur · {{ o.base_skus }}&rarr;{{ o.current_skus }} SKU</span>
-        </td>
+        <td data-value="{{ o.branch }}" title="{{ o.branch }}, {{ o.region }}">{{ o.branch }}</td>
+        <td data-value="{{ o.salesman }}">{{ o.salesman }}</td>
         <td class="num" data-value="{{ o.base }}">{{ o.base|rp }}</td>
         <td class="num" data-value="{{ o.current }}">{{ o.current|rp }}</td>
         <td class="num strong" data-value="{{ o.change_idr }}">{{ o.change_idr|rp }}</td>
-        <td class="num" data-value="{{ o.change_pct }}">
-          <div class="calc-cell">
-            {{ m.pill(o.change_pct) }}
-            <span class="calc-sub">{{ o.change_idr|rp }} ÷ {{ o.base|rp }} × 100</span>
-          </div>
-        </td>
-        <td class="share-col" data-value="{{ '%.2f'|format(kept) }}">
-          <span class="share">
-            {{ m.bar(kept if kept < 100 else 100, o.change_pct) }}
-            <span class="num">{{ kept|pct(digits=0, signed=false) }}</span>
-          </span>
+        <td class="num" data-value="{{ o.change_pct }}">{{ m.pill(o.change_pct) }}</td>
+        <td class="action-col">
+          <button type="button" class="peek-btn" data-peek-open="{{ o.outlet_id }}" data-peek-lens="{{ default_sort_col }}" aria-controls="outlet-side-peek" aria-expanded="false" aria-label="Buka detail {{ o.name }}">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="12" height="12" x="2" y="2" rx="2"/><path d="M10 2v12"/></svg>
+            <span>Detail</span>
+          </button>
         </td>
       </tr>
       {%- endfor %}
+      <tr class="empty-row" hidden>
+        <td colspan="9">
+          <p><strong>Tidak ada outlet yang cocok</strong><span data-empty-query></span>.</p>
+          <button type="button" class="btn btn-secondary btn-compact" data-weak-reset>Reset pencarian</button>
+        </td>
+      </tr>
     </tbody>
   </table>
 </div>
 {%- endmacro -%}
 
-<div class="stack">
-  <section class="card table-section" aria-labelledby="hasil" data-lens-root>
-    <div class="card-head lens-head">
-      <div>
-        <h2 id="hasil">Hasil dan hitungannya</h2>
-        <p class="card-sub">Bandingkan kemerosotan laju toko (%) dan kebocoran nilai rupiah (Rp). Pilih judul kolom untuk mengurutkan.</p>
-      </div>
-      {% if r.weakest and a.revenue_at_risk %}
-      <fieldset class="segmented" data-lens-switch hidden>
-        <legend>Lensa evaluasi</legend>
-        <span class="seg-indicator" aria-hidden="true"></span>
-        <label><input type="radio" name="weak-lens" value="pct" checked>Kemerosotan % <span class="count">{{ r.weakest|length }}</span></label>
-        <label><input type="radio" name="weak-lens" value="idr">Kehilangan Rp <span class="count">{{ a.revenue_at_risk|length }}</span></label>
-      </fieldset>
-      {% endif %}
-    </div>
-
-    <div class="lens-panel" data-lens-panel="pct">
-      {% if r.weakest %}
-      <p class="lens-note"><strong>Lensa kemerosotan laju (%):</strong> menemukan ritel aktif{% if min_base > 0 %} (penjualan {{ base|month_short }} &ge; <strong>{{ min_base|rp }}</strong>, kuartil ke-1 eksak tanpa pembulatan){% endif %} yang ordernya paling anjlok dan berisiko berhenti beli. Ke-{{ r.weakest|length }} outlet ini mencakup <strong>{{ a.weakest_drop_idr|rp_short }}</strong> ({{ a.weakest_drop_share_pct|pct(signed=false) }}) dari total penurunan {{ a.total_drop_idr|rp_short }}.</p>
-      {{ lens_table(r.weakest, "weakest-table", "Daftar outlet dengan kemerosotan persentase terdalam beserta hitungannya", "pct") }}
-      {% else %}
-      <p class="muted">Tidak ada outlet memenuhi ambang yang penjualannya turun dari {{ base|month_short }} ke {{ current|month_short }}.</p>
-      {% endif %}
-    </div>
-
-    {% if a.revenue_at_risk %}
-    <div class="lens-panel" data-lens-panel="idr">
-      <p class="lens-note"><strong>Lensa kehilangan rupiah (Revenue-at-Risk):</strong> menemukan akun besar/grosir dengan kebocoran omzet absolut terbesar bagi cabang. Ke-{{ a.revenue_at_risk|length }} outlet ini menyumbang <strong>{{ a.risk_drop_idr|rp_short }}</strong> ({{ a.risk_drop_share_pct|pct(signed=false) }}) dari total penurunan {{ a.total_drop_idr|rp_short }}.</p>
-      {{ lens_table(a.revenue_at_risk, "risk-table", "Daftar outlet dengan kehilangan rupiah terbesar beserta hitungannya", "idr") }}
-    </div>
+{%- set base_span = (base|month_short) if base[:4] == current[:4] else (base|month_label) -%}
+{%- set compare_label = base_span ~ " → " ~ (current|month_label) -%}
+<div data-lens-root>
+  {% call m.page_head(
+       "Outlet terlemah & atribusi salesman",
+       "Menyaring " ~ (r.weakest|length if r.weakest else r.weakest_rule.count) ~ " kemerosotan terdalam pada outlet aktif" ~ (" ≥ Q1 (" ~ (min_base|rp) ~ ")" if min_base > 0 else "") ~ ", didampingi lensa kehilangan rupiah akun besar.",
+       "Evaluasi Penurunan · " ~ compare_label
+     ) %}
+    {% if r.weakest or a.revenue_at_risk %}
+    {%- set default_lens = "pct" if r.weakest else "idr" -%}
+    <fieldset class="segmented" data-lens-switch hidden>
+      <legend>Lensa evaluasi</legend>
+      <span class="seg-indicator" aria-hidden="true"></span>
+      <label><input type="radio" name="weak-lens" value="pct"{% if default_lens == "pct" %} checked{% endif %}>Kemerosotan % <span class="count">({{ r.weakest|length }})</span></label>
+      <label><input type="radio" name="weak-lens" value="idr"{% if default_lens == "idr" %} checked{% endif %}>Kehilangan Rp <span class="count">({{ a.revenue_at_risk|length }})</span></label>
+    </fieldset>
     {% endif %}
-  </section>
+  {% endcall %}
 
-  <div class="method-split">
-    <section class="card rule-card" aria-labelledby="aturan">
-      <div class="card-head">
-        <h2 id="aturan">Aturan yang dipakai</h2>
-      </div>
-      <p>Lensa utama memakai standar ritel <strong>Comparable Store Sales</strong> dengan <strong>kuartil bawah eksak (Q1)</strong> tanpa pembulatan antara agar bebas dari bias penyebut kecil (persamaan De Moivre, &sigma;<sub>x&#772;</sub> = &sigma; &divide; &radic;n) sekaligus tidak menggeser batas kelayakan outlet.</p>
-      <div class="formula" role="group" aria-label="Rumus perubahan dan kuartil Q1">
-        <div class="formula-row">
-          <span class="formula-label">Rumus %</span>
-          <span class="formula-body">Perubahan (%) = (Penjualan {{ current|month_short }} − Penjualan {{ base|month_short }}) ÷ Penjualan {{ base|month_short }} × 100</span>
+  <div class="stack">
+    <section class="clean-section table-section" aria-labelledby="hasil">
+      <div class="table-head-bar">
+        <div class="table-title-inline">
+          <h2 class="section-title" id="hasil">Hasil dan hitungannya</h2>
+          <span class="section-meta" data-weak-count role="status">{{ r.weakest|length }} outlet</span>
+          <button type="button" class="btn btn-ghost" data-weak-reset hidden>Reset</button>
         </div>
-        {% if min_base > 0 %}
-        <div class="formula-row">
-          <span class="formula-label">Ambang Q1</span>
-          <span class="formula-body">Q1 = Persentil ke-25 (posisi 0,25 × ({{ after_new }} + 1)) dari {{ after_new }} outlet aktif {{ base|month_short }} = {{ min_base|rp }}</span>
+
+        {% if r.weakest or a.revenue_at_risk %}
+        <div class="table-search-inline" data-weak-toolbar hidden>
+          <div class="search">
+            <label for="weak-search" class="sr-only">Cari nama toko, ID outlet, atau salesman</label>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
+            <input type="search" id="weak-search" class="field field-compact" placeholder="Cari nama toko, ID, atau salesman…" enterkeyhint="search" autocomplete="off" spellcheck="false">
+          </div>
         </div>
         {% endif %}
       </div>
-      <ul class="checks">
-        <li>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
-          <span>{% if min_base > 0 %}Ambang dasar memakai nilai eksak <strong>Q1 = {{ min_base|rp }}</strong> tanpa pembulatan supaya outlet di sekitar batas kuartil tidak terdiskualifikasi atau bocor, dan otomatis beradaptasi pada CSV berskala apa pun.{% else %}Seluruh {{ after_new }} outlet aktif disertakan (jumlah outlet aktif di bawah 4, tanpa pemangkasan kuartil).{% endif %}</span>
-        </li>
-        <li>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
-          <span>Hanya menghitung outlet sebanding yang penjualannya <strong>turun</strong> dari {{ base|month_short }} ke {{ current|month_short }}.</span>
-        </li>
-        <li>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
-          <span>Didampingi lensa <strong>Kehilangan Rp terbesar</strong> agar kebocoran omzet di akun grosir besar tetap terpantau penuh.</span>
-        </li>
-      </ul>
+
+      <div class="lens-panel" data-lens-panel="pct">
+        {% if r.weakest %}
+        {{ lens_table(r.weakest, "weakest-table", "Daftar outlet dengan kemerosotan persentase terdalam beserta cabang dan salesman", "pct") }}
+        {% else %}
+        <p class="muted">Tidak ada outlet memenuhi ambang yang penjualannya turun dari {{ base|month_short }} ke {{ current|month_short }}.</p>
+        {% endif %}
+      </div>
+
+      {% if a.revenue_at_risk %}
+      <div class="lens-panel" data-lens-panel="idr">
+        {{ lens_table(a.revenue_at_risk, "risk-table", "Daftar outlet dengan kehilangan rupiah terbesar beserta cabang dan salesman", "idr") }}
+      </div>
+      {% endif %}
     </section>
 
-    <section class="card" aria-labelledby="penyaringan">
-      <div class="card-head">
-        <h2 id="penyaringan">Cara menyaring {{ a.total }} outlet</h2>
-        <span class="card-sub">Angka kanan = outlet tersisa</span>
-      </div>
-      <ol class="funnel">
-        <li>
-          <div class="funnel-text">
-            <h3>Mulai dari semua outlet</h3>
-            <p>Semua outlet yang bertransaksi di {{ base|month_label }} atau {{ current|month_label }}.</p>
+    <div class="method-split editorial-rule">
+      <section class="clean-section rule-col" aria-labelledby="aturan">
+        <h2 class="section-title" id="aturan">Aturan yang dipakai</h2>
+        <p class="editorial-copy">Menggunakan standar ritel <strong>Comparable Store Sales</strong> dengan kuartil bawah eksak (<strong>Q1</strong>) tanpa pembulatan antara agar bebas dari bias penyebut kecil (persamaan De Moivre, &sigma;<sub>x&#772;</sub> = &sigma; &divide; &radic;n).</p>
+        <div class="formula" role="group" aria-label="Rumus perubahan dan kuartil Q1">
+          <div class="formula-row">
+            <span class="formula-label">Rumus Perubahan</span>
+            <span class="formula-body">({{ current|month_short }} − {{ base|month_short }}) ÷ {{ base|month_short }} × 100</span>
           </div>
-          <div class="funnel-count">{{ m.bar(100) }}<strong>{{ a.total }}</strong></div>
-        </li>
-        <li>
-          <div class="funnel-text">
-            <h3>Keluarkan {{ n_new }} outlet baru</h3>
-            <p>{% if a.new %}{{ a.new|map(attribute="name")|join(", ") }} belum punya penjualan {{ base|month_short }}, jadi perubahannya tidak bisa dihitung.{% else %}Tidak ada outlet baru.{% endif %}</p>
+          {% if r.weakest %}
+          <div class="formula-row">
+            <span class="formula-label">Contoh Hitungan ({{ r.weakest[0].name }})</span>
+            <span class="formula-body">{{ r.weakest[0].change_idr|rp }} ÷ {{ r.weakest[0].base|rp }} × 100 = {{ r.weakest[0].change_pct|pct }}</span>
           </div>
-          <div class="funnel-count">{{ m.bar(after_new / a.total * 100) }}<strong>{{ after_new }}</strong></div>
-        </li>
-        <li>
-          <div class="funnel-text">
-            <h3>Keluarkan {{ n_small }} outlet kecil (&lt; Q1)</h3>
-            <p>{% if min_base > 0 %}Penjualan {{ base|month_short }} di bawah Q1 eksak ({{ min_base|rp }}). Angka dasarnya kecil, jadi persennya mudah melonjak karena fluktuasi 1–2 karton.{% if small_example %} Contoh: {{ small_example.name }} {{ small_example.branch }} turun {{ small_example.change_pct|pct(digits=0, signed=false)|replace("−", "") }} padahal selisihnya hanya {{ (0 - small_example.change_idr)|rp }}.{% endif %}{% else %}Jumlah outlet aktif di bawah 4, sehingga pemangkasan kuartil bawah tidak diberlakukan.{% endif %}</p>
-            {% if a.small %}
-            <details class="why">
-              <summary><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg>Lihat {{ n_small }} outlet yang dikeluarkan</summary>
-              <ul class="plain-list">
-                {%- for o in a.small %}
-                <li><span>{{ o.name }} <span class="muted">· {{ o.branch }}</span></span><span class="num">{{ o.base|rp }}</span></li>
-                {%- endfor %}
-              </ul>
-            </details>
-            {% endif %}
+          {% endif %}
+          {% if min_base > 0 %}
+          <div class="formula-row">
+            <span class="formula-label">Ambang Kuartil Bawah (Q1 Eksak)</span>
+            <span class="formula-body">P25 (0,25 × ({{ after_new }} + 1)) = {{ min_base|rp }}</span>
           </div>
-          <div class="funnel-count">{{ m.bar(a.eligible / a.total * 100) }}<strong>{{ a.eligible }}</strong></div>
-        </li>
-        <li>
-          <div class="funnel-text">
-            <h3>Ambil yang penjualannya turun</h3>
-            <p>Dari {{ a.eligible }} outlet yang memenuhi syarat ukuran, {{ a.declining }} turun dan {{ a.eligible - a.declining }} naik atau tetap.</p>
-          </div>
-          <div class="funnel-count">{{ m.bar(a.declining / a.total * 100) }}<strong>{{ a.declining }}</strong></div>
-        </li>
-        <li>
-          <div class="funnel-text">
-            <h3>Urutkan dan ambil {{ r.weakest_rule.count }} teratas</h3>
-            <p>Diurutkan dari penurunan persentase terbesar.</p>
-          </div>
-          <div class="funnel-count">{{ m.bar(r.weakest|length / a.total * 100, -1) }}<strong>{{ r.weakest|length }}</strong></div>
-        </li>
-      </ol>
-    </section>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="clean-section" aria-labelledby="penyaringan">
+        <div class="section-bar">
+          <h2 class="section-title" id="penyaringan">Cara menyaring {{ a.total }} outlet</h2>
+          <span class="section-sub">Outlet tersisa di tiap tahap</span>
+        </div>
+        <ol class="funnel">
+          <li>
+            <div class="funnel-text">
+              <h3>Mulai dari semua outlet</h3>
+              <p>Aktif pada {{ base|month_label }} atau {{ current|month_label }}.</p>
+            </div>
+            <div class="funnel-count">{{ m.bar(100) }}<strong>{{ a.total }}</strong></div>
+          </li>
+          <li>
+            <div class="funnel-text">
+              <h3>Keluarkan {{ n_new }} outlet baru</h3>
+              <p>{% if a.new %}{% for o in a.new %}[{{ o.outlet_id }}] {{ o.name }} ({{ o.branch }} · {{ o.salesman }}){% if not loop.last %}, {% endif %}{% endfor %} belum memiliki basis penjualan {{ base|month_short }}.{% else %}Tidak ada outlet baru.{% endif %}</p>
+            </div>
+            <div class="funnel-count">{{ m.bar(after_new / a.total * 100) }}<strong>{{ after_new }}</strong></div>
+          </li>
+          <li>
+            <div class="funnel-text">
+              <h3>Keluarkan {{ n_small }} outlet kecil (&lt; Q1)</h3>
+              <p>{% if min_base > 0 %}Penjualan {{ base|month_short }} di bawah {{ min_base|rp }} (rawan lonjakan % semu).{% if small_example %} Contoh: [{{ small_example.outlet_id }}] {{ small_example.name }} {{ small_example.branch }} turun {{ small_example.change_pct|pct(digits=0, signed=false)|replace("−", "") }} hanya dari selisih {{ (0 - small_example.change_idr)|rp }}.{% endif %}{% else %}Jumlah outlet aktif di bawah 4, tanpa pemangkasan kuartil.{% endif %}</p>
+              {% if a.small %}
+              <details class="why">
+                <summary><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg>Lihat {{ n_small }} outlet yang dikeluarkan</summary>
+                <ul class="plain-list">
+                  {%- for o in a.small %}
+                  <li><span>[{{ o.outlet_id }}] {{ o.name }} <span class="muted">· {{ o.branch }} · {{ o.salesman }}</span></span><span class="num">{{ o.base|rp }}</span></li>
+                  {%- endfor %}
+                </ul>
+              </details>
+              {% endif %}
+            </div>
+            <div class="funnel-count">{{ m.bar(a.eligible / a.total * 100) }}<strong>{{ a.eligible }}</strong></div>
+          </li>
+          <li>
+            <div class="funnel-text">
+              <h3>Ambil outlet yang menurun</h3>
+              <p>{{ a.declining }} outlet turun, {{ a.eligible - a.declining }} outlet naik atau tetap.</p>
+            </div>
+            <div class="funnel-count">{{ m.bar(a.declining / a.total * 100) }}<strong>{{ a.declining }}</strong></div>
+          </li>
+          <li>
+            <div class="funnel-text">
+              <h3>Urutkan {{ r.weakest_rule.count }} kemerosotan terdalam</h3>
+              <p>Dilengkapi atribusi rute salesman penanggung jawab.</p>
+            </div>
+            <div class="funnel-count">{{ m.bar(r.weakest|length / a.total * 100, lead=true) }}<strong>{{ r.weakest|length }}</strong></div>
+          </li>
+        </ol>
+      </section>
+    </div>
+  </div>
+</div>
+
+{%- set peek_ns = namespace(ids=[], items=[]) -%}
+{%- for o in (r.weakest + (a.revenue_at_risk if a.revenue_at_risk else [])) -%}
+  {%- if o.outlet_id not in peek_ns.ids -%}
+    {%- set peek_ns.ids = peek_ns.ids + [o.outlet_id] -%}
+    {%- set peek_ns.items = peek_ns.items + [o] -%}
+  {%- endif -%}
+{%- endfor -%}
+
+{% if peek_ns.items %}
+<div class="peek-backdrop" data-peek-backdrop hidden></div>
+<aside id="outlet-side-peek" class="side-peek" aria-label="Detail diagnostik outlet" hidden tabindex="-1">
+  <div class="peek-topbar">
+    <div class="peek-nav">
+      <button type="button" class="peek-icon-btn peek-close-btn" data-peek-close aria-label="Tutup panel detail (Esc)" title="Tutup panel (Esc)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4.5 4 4 4-4 4"/><path d="m8.5 4 4 4-4 4"/></svg>
+      </button>
+      <span class="peek-divider" aria-hidden="true"></span>
+      <button type="button" class="peek-icon-btn" data-peek-prev aria-label="Outlet sebelumnya" title="Outlet sebelumnya (↑)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 10 4-4 4 4"/></svg>
+      </button>
+      <button type="button" class="peek-icon-btn" data-peek-next aria-label="Outlet berikutnya" title="Outlet berikutnya (↓)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+      </button>
+      <span class="peek-pos" data-peek-pos role="status"></span>
+    </div>
+
+    <div class="peek-actions">
+      <span class="copy-status" id="peek-copy-status" role="status"></span>
+      <button type="button" class="peek-copy-btn" data-peek-copy aria-describedby="peek-copy-status">
+        <svg class="icon-copy" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg>
+        <svg class="icon-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
+        <span>Salin detail</span>
+      </button>
+    </div>
   </div>
 
-  <section aria-labelledby="pembanding">
-    <div class="section-head">
-      <h2 id="pembanding">Kenapa tidak memakai cara lain?</h2>
-      <p class="section-lede">Perbandingan terhadap metode omzet terendah dan uji silang statistik Empirical Bayes pada data yang sama.</p>
-    </div>
-    <div class="grid-2 compare">
-      <div class="card">
-        <h3 class="card-title">Penjualan total terendah</h3>
-        <ol class="plain-list ranked">
-          {%- for o in a.lowest_total %}
-          <li><span>{{ o.name }} <span class="muted">· {{ o.branch }}</span></span><span class="num">{{ o.total|rp_short }} {{ m.pill(o.change_pct, digits=0) }}</span></li>
+  <div class="peek-body">
+    {%- for o in peek_ns.items %}
+    {%- set inv_diff = o.current_invoices - o.base_invoices %}
+    {%- set sk = o.sku_summary %}
+    {%- set stopped_skus = o.skus|selectattr("status", "equalto", "berhenti")|list %}
+    {%- set running_skus = o.skus|rejectattr("status", "equalto", "berhenti")|list %}
+    {%- set sm_sorted = o.salesmen|sort(attribute="change_idr") %}
+    {%- set ns_sm = namespace(max_abs=1) %}
+    {%- for sm in sm_sorted %}
+      {%- set sm_abs = sm.change_idr if sm.change_idr >= 0 else (0 - sm.change_idr) %}
+      {%- if sm_abs > ns_sm.max_abs %}{% set ns_sm.max_abs = sm_abs %}{% endif %}
+    {%- endfor %}
+    <article class="peek-sheet" data-peek-item="{{ o.outlet_id }}" hidden>
+      <header class="peek-header">
+        <div class="peek-meta">
+          <span class="peek-code">{{ o.outlet_id }}</span>
+          <span class="peek-type">{{ o.outlet_type }}</span>
+          <span class="peek-dot" aria-hidden="true">&middot;</span>
+          <span class="peek-rank" data-peek-rank-tag>Evaluasi Penurunan</span>
+        </div>
+        <h3 class="peek-title">{{ o.name }}</h3>
+        <div class="peek-delta-row">
+          {{ m.pill(o.change_pct) }}
+          <span class="peek-diff num">{{ o.change_idr|rp }}</span>
+          <span class="peek-period">dari {{ base_span }} ke {{ current|month_label }}</span>
+        </div>
+      </header>
+
+      <dl class="peek-props">
+        <div class="peek-prop">
+          <dt>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 14.5s5-4.3 5-8.2A5 5 0 0 0 3 6.3c0 3.9 5 8.2 5 8.2Z"/><circle cx="8" cy="6.3" r="1.7"/></svg>
+            <span>Kota Cabang</span>
+          </dt>
+          <dd class="strong">{{ o.branch }}</dd>
+        </div>
+
+        <div class="peek-prop">
+          <dt>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M2 8h12"/><path d="M8 2a9.6 9.6 0 0 1 2.4 6A9.6 9.6 0 0 1 8 14a9.6 9.6 0 0 1-2.4-6A9.6 9.6 0 0 1 8 2Z"/></svg>
+            <span>Wilayah</span>
+          </dt>
+          <dd>{{ o.region }}</dd>
+        </div>
+
+        <div class="peek-prop">
+          <dt>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 13.5v-1a2.5 2.5 0 0 0-2.5-2.5h-4A2.5 2.5 0 0 0 2 12.5v1"/><circle cx="6.5" cy="5.5" r="2.5"/><path d="M14 13.5v-1a2.5 2.5 0 0 0-1.9-2.4"/><path d="M10.8 3.2a2.5 2.5 0 0 1 0 4.6"/></svg>
+            <span>Tim Salesman</span>
+          </dt>
+          <dd class="strong">{{ o.salesman }}</dd>
+        </div>
+
+        <div class="peek-prop">
+          <dt>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 2H4.2A1.2 1.2 0 0 0 3 3.2v9.6A1.2 1.2 0 0 0 4.2 14h7.6a1.2 1.2 0 0 0 1.2-1.2V5.5Z"/><path d="M9.5 2v3.5H13"/><path d="M5.5 8.5h5"/><path d="M5.5 11h3.5"/></svg>
+            <span>Frekuensi Faktur</span>
+          </dt>
+          <dd>
+            <span class="strong num">{{ o.base_invoices }} &rarr; {{ o.current_invoices }} faktur</span>
+            {% if inv_diff < 0 %}
+            <span class="peek-note peek-note-neg">(&minus;{{ 0 - inv_diff }} kunjungan{% if o.base_avg_invoice_idr and o.current_avg_invoice_idr %} &middot; {{ o.base_avg_invoice_idr|rp_short }}&rarr;{{ o.current_avg_invoice_idr|rp_short }}/faktur{% endif %})</span>
+            {% elif inv_diff > 0 %}
+            <span class="peek-note peek-note-pos">(+{{ inv_diff }} kunjungan)</span>
+            {% else %}
+            <span class="peek-note">(stabil{% if o.base_avg_invoice_idr and o.current_avg_invoice_idr %} &middot; {{ o.base_avg_invoice_idr|rp_short }}&rarr;{{ o.current_avg_invoice_idr|rp_short }}/faktur{% endif %})</span>
+            {% endif %}
+          </dd>
+        </div>
+
+        <div class="peek-prop">
+          <dt>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.2" y="3.5" width="11.6" height="9.5" rx="1.3"/><path d="M2.2 6.8h11.6"/><path d="M6.2 3.5v3.3"/><path d="M9.8 3.5v3.3"/></svg>
+            <span>Volume Karton</span>
+          </dt>
+          <dd>
+            <span class="strong num">{{ o.base_cartons }} &rarr; {{ o.current_cartons }} karton</span>
+            {% if o.change_cartons < 0 %}
+            <span class="peek-note peek-note-neg">(&minus;{{ 0 - o.change_cartons }} krt{% if o.carton_change_pct is not none %} &middot; {{ o.carton_change_pct|pct }}{% endif %})</span>
+            {% elif o.change_cartons > 0 %}
+            <span class="peek-note peek-note-pos">(+{{ o.change_cartons }} krt)</span>
+            {% endif %}
+          </dd>
+        </div>
+
+        <div class="peek-prop">
+          <dt>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8 13.5 5v6L8 14.2 2.5 11V5Z"/><path d="M2.5 5 8 8.2 13.5 5"/><path d="M8 8.2v6"/></svg>
+            <span>Variasi Produk</span>
+          </dt>
+          <dd>
+            <span class="strong num">{{ o.base_skus }} &rarr; {{ o.current_skus }} SKU</span>
+            <span class="peek-note">{% if sk.stopped > 0 %}<span class="peek-note-neg">{{ sk.stopped }} berhenti</span> &middot; {% endif %}{{ sk.running }} jalan{% if sk.new > 0 %} (+{{ sk.new }} baru){% endif %}</span>
+          </dd>
+        </div>
+
+        {% if o.last_order_date %}
+        <div class="peek-prop">
+          <dt>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.2" width="11" height="10.3" rx="1.5"/><path d="M5.5 2v2.4"/><path d="M10.5 2v2.4"/><path d="M2.5 6.5h11"/></svg>
+            <span>Order Terakhir</span>
+          </dt>
+          <dd>
+            <span class="strong">{{ o.last_order_date|date_id }}</span>
+            <span class="peek-note">(via {{ o.last_order_salesman }} &middot; {{ o.last_order_invoice }})</span>
+          </dd>
+        </div>
+        {% endif %}
+
+        <div class="peek-prop">
+          <dt>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8.3V3.2a.7.7 0 0 1 .7-.7h5.1l5.2 5.2a1 1 0 0 1 0 1.4l-4.4 4.4a1 1 0 0 1-1.4 0Z"/><circle cx="5.5" cy="5.5" r="1"/></svg>
+            <span>Merek Dipesan</span>
+          </dt>
+          <dd>{{ o.brands_label }}</dd>
+        </div>
+      </dl>
+
+      {% if o.skus %}
+      <section class="peek-section" aria-label="Status dan pergerakan SKU" data-sku-section>
+        <div class="peek-sec-bar">
+          <h4 class="peek-sec-title">Status &amp; Pergerakan SKU</h4>
+          <div class="sku-filter-tabs" role="group" aria-label="Filter status SKU" data-sku-filters>
+            <button type="button" class="sku-tab is-active" data-sku-filter="all" aria-pressed="true">Semua <span>{{ sk.total }}</span></button>
+            <button type="button" class="sku-tab" data-sku-filter="berhenti" aria-pressed="false">Berhenti <span>{{ sk.stopped }}</span></button>
+            <button type="button" class="sku-tab" data-sku-filter="jalan" aria-pressed="false">Jalan <span>{{ sk.running }}</span></button>
+          </div>
+        </div>
+
+        <p class="peek-sec-sub">
+          {%- if sk.stopped > 0 -%}
+          <strong>{{ sk.stopped }} SKU berhenti order</strong> ({{ sk.stopped_idr|rp_short }}) &middot; <strong>{{ sk.running }} SKU masih jalan</strong> ({% if sk.declining > 0 %}{{ sk.declining }} turun karton{% endif %}{% if sk.declining > 0 and (sk.growing > 0 or sk.new > 0) %}, {% endif %}{% if sk.growing > 0 %}{{ sk.growing }} tumbuh/stabil{% endif %}{% if sk.growing > 0 and sk.new > 0 %}, {% endif %}{% if sk.new > 0 %}{{ sk.new }} varian baru{% endif %}).
+          {%- else -%}
+          Seluruh <strong>{{ sk.running }} SKU masih jalan</strong> di {{ current|month_short }} &mdash; penurunan berasal dari menyusutnya karton pada {{ sk.declining }} SKU.
+          {%- endif -%}
+        </p>
+
+        <div class="peek-sku-table">
+          <div class="peek-sku-head" aria-hidden="true">
+            <span>SKU &amp; Merek</span>
+            <span class="num">Karton</span>
+            <span class="num">Selisih</span>
+            <span class="num">Status</span>
+          </div>
+          <div class="peek-sku-rows">
+            {%- for s in o.skus %}
+            <div class="peek-sku-row" data-sku-group="{{ s.group }}">
+              <div class="peek-sku-info">
+                <span class="peek-sku-name">{{ s.sku }}</span>
+                <span class="peek-sku-brand">{{ s.brand }} &middot; Sales {{ s.salesman_label }}</span>
+              </div>
+              <span class="num peek-sku-ctn">{{ s.base_cartons }}&rarr;{{ s.current_cartons }}</span>
+              <span class="num peek-sku-diff {% if s.change_idr < 0 %}delta-neg{% elif s.change_idr > 0 %}delta-pos{% endif %}" title="{{ s.base|rp }} → {{ s.current|rp }}">{% if s.change_idr > 0 %}+{% endif %}{{ s.change_idr|rp_short }}</span>
+              <div class="peek-sku-badge">
+                {%- if s.status == "berhenti" %}
+                <span class="pill pill-neg">Berhenti</span>
+                {%- elif s.status == "turun" %}
+                <span class="pill pill-warn">Jalan &middot; {{ s.change_pct|pct(digits=0) }}</span>
+                {%- elif s.status == "tumbuh" %}
+                <span class="pill pill-pos">Jalan &middot; {{ s.change_pct|pct(digits=0) }}</span>
+                {%- elif s.status == "baru" %}
+                <span class="pill pill-pos">Baru</span>
+                {%- else %}
+                <span class="pill">Jalan &middot; 0%</span>
+                {%- endif %}
+              </div>
+            </div>
+            {%- endfor %}
+            <div class="peek-sku-empty" data-sku-empty hidden>Tidak ada SKU pada kategori filter ini.</div>
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      {% if sm_sorted %}
+      <section class="peek-section" aria-label="Atribusi penurunan per salesman">
+        <div class="peek-sec-head">
+          <h4 class="peek-sec-title">Atribusi Penurunan per Salesman</h4>
+          <p class="peek-sec-sub">Membedah kontribusi masing-masing rute sales di outlet ini</p>
+        </div>
+
+        <div class="peek-sm-list">
+          {%- for sm in sm_sorted %}
+          {%- set sm_abs = sm.change_idr if sm.change_idr >= 0 else (0 - sm.change_idr) %}
+          {%- set bar_w = [6, [100, (sm_abs / ns_sm.max_abs * 100)|round(1)]|min]|max %}
+          {%- set is_primary_drop = (loop.first and sm.change_idr < 0 and (sm_sorted|length == 1 or sm_abs >= 0.55 * (0 - o.change_idr))) %}
+          <div class="peek-sm-card">
+            <div class="peek-sm-top">
+              <div class="peek-sm-id">
+                <span class="peek-sm-name">{{ sm.name }}</span>
+                {%- if sm.base > 0 and sm.current <= 0 %}
+                <span class="pill pill-neg">Berhenti order</span>
+                {%- elif is_primary_drop %}
+                <span class="pill pill-neg">Pemicu utama drop</span>
+                {%- elif sm.change_idr < 0 %}
+                <span class="pill pill-neg">Ikut menurun</span>
+                {%- elif sm.change_idr > 0 %}
+                <span class="pill pill-pos">Tetap tumbuh</span>
+                {%- else %}
+                <span class="pill">Stabil</span>
+                {%- endif %}
+              </div>
+              <span class="delta {% if sm.change_idr < 0 %}delta-neg{% elif sm.change_idr > 0 %}delta-pos{% endif %}">{% if sm.change_idr > 0 %}+{% endif %}{{ sm.change_idr|rp }}{% if sm.change_pct is not none %} ({{ sm.change_pct|pct }}){% endif %}</span>
+            </div>
+            <span class="peek-sm-range num">{{ sm.base|rp }} &rarr; {{ sm.current|rp }}</span>
+            {{ m.bar(bar_w, sm.change_idr) }}
+          </div>
           {%- endfor %}
-        </ol>
-        <p class="verdict"><strong>{{ lowest_up }} dari {{ a.lowest_total|length }}</strong> outlet ini justru naik. Mereka kecil dari awal, bukan sedang melemah.</p>
-      </div>
-      <div class="card">
-        <h3 class="card-title">Uji silang Empirical Bayes Shrinkage</h3>
-        <ol class="plain-list ranked">
-          {%- for o in a.empirical_bayes %}
-          <li><span>{{ o.name }} <span class="muted">· {{ o.branch }} ({{ o.outlet_type }})</span></span><span class="num">{{ o.change_idr|rp_short }} {{ m.pill(o.eb_change_pct, digits=1) }}</span></li>
-          {%- endfor %}
-        </ol>
-        <p class="verdict">Penyesuaian Bayesian dengan bobot median otomatis memunculkan <strong>toko ritel yang anjlok tajam</strong> sekaligus <strong>akun grosir beromzet besar yang bocor</strong>—memvalidasi mengapa kedua lensa di atas perlu dipantau bersama.</p>
-      </div>
-    </div>
-    <p class="conclusion">Kombinasi dua lensa (kemerosotan % di atas Q1 dan kehilangan Rp absolut) memastikan risiko berhentinya toko ritel maupun kebocoran omzet grosir tertangkap tanpa titik buta. Daftar lengkap ada di <a href="/#outlet">tabel semua outlet di Ringkasan</a>.</p>
-  </section>
-</div>
+        </div>
+      </section>
+      {% endif %}
+
+      <section class="peek-section peek-section-last" aria-label="Rincian perbandingan dan rumus hitungan">
+        <h4 class="peek-sec-title">Rincian Perbandingan &amp; Rumus Hitungan</h4>
+
+        <div class="peek-ledger">
+          <div class="peek-ledger-col">
+            <span class="peek-ledger-label">{{ base|month_label }}</span>
+            <span class="peek-ledger-val num">{{ o.base|rp }}</span>
+          </div>
+          <div class="peek-ledger-col">
+            <span class="peek-ledger-label">{{ current|month_label }}</span>
+            <span class="peek-ledger-val num">{{ o.current|rp }}</span>
+          </div>
+          <div class="peek-ledger-col peek-ledger-neg">
+            <span class="peek-ledger-label">Selisih Bersih</span>
+            <span class="peek-ledger-val num">{{ o.change_idr|rp }}</span>
+          </div>
+        </div>
+
+        <div class="peek-formula">
+          <span class="peek-formula-label">Rumus Kemerosotan &amp; Validasi Q1</span>
+          <span class="peek-formula-eq">{{ o.change_idr|rp }} &divide; {{ o.base|rp }} &times; 100 = {{ o.change_pct|pct if o.change_pct is not none else "—" }}</span>
+          {% if min_base > 0 %}
+          <span class="peek-formula-note">
+            {%- if o.base >= min_base -%}
+            Basis {{ base|month_short }} {{ o.base|rp }} &ge; Q1 ({{ min_base|rp }}) &mdash; memenuhi syarat evaluasi
+            {%- else -%}
+            Basis {{ base|month_short }} {{ o.base|rp }} di bawah ambang Q1 ({{ min_base|rp }}) &mdash; masuk lewat lensa Kehilangan Rp
+            {%- endif -%}
+          </span>
+          {% endif %}
+        </div>
+      </section>
+
+      <pre hidden data-peek-copy-source>[{{ o.outlet_id }}] {{ o.name }} ({{ o.outlet_type }} · {{ o.branch }}, {{ o.region }})
+• Perubahan {{ base|month_short }} → {{ current|month_short }}: {{ o.base|rp }} → {{ o.current|rp }} ({{ o.change_idr|rp }} / {{ o.change_pct|pct if o.change_pct is not none else "—" }})
+• Aktivitas: {{ o.base_invoices }} → {{ o.current_invoices }} faktur · {{ o.base_cartons }} → {{ o.current_cartons }} karton · {{ o.base_skus }} → {{ o.current_skus }} SKU{% if o.last_order_date %} · Order terakhir {{ o.last_order_date|date_id }} ({{ o.last_order_salesman }}){% endif %}
+{% if stopped_skus %}• SKU Berhenti ({{ stopped_skus|length }}): {% for s in stopped_skus %}{{ s.sku }} ({{ s.base_cartons }}→0 krt, {{ s.change_idr|rp_short }}){% if not loop.last %}, {% endif %}{% endfor %}
+{% endif %}{% if running_skus %}• SKU Jalan ({{ running_skus|length }}): {% for s in running_skus %}{{ s.sku }} ({{ s.base_cartons }}→{{ s.current_cartons }} krt, {% if s.change_idr > 0 %}+{% endif %}{{ s.change_idr|rp_short }}){% if not loop.last %}, {% endif %}{% endfor %}
+{% endif %}• Salesman: {% for sm in sm_sorted %}{{ sm.name }} ({{ sm.base|rp_short }} → {{ sm.current|rp_short }}, {% if sm.change_idr > 0 %}+{% endif %}{{ sm.change_idr|rp_short }}){% if not loop.last %}; {% endif %}{% endfor %}</pre>
+    </article>
+    {%- endfor %}
+  </div>
+</aside>
+{% endif %}
 {% endblock %}

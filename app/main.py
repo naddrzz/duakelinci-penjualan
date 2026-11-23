@@ -16,14 +16,14 @@ from fastapi.templating import Jinja2Templates
 from . import config
 from .analysis import build_report
 from .data import REQUIRED_COLUMNS, load_sales, load_sales_text
-from .formatting import month_label, month_short, pct, rp, rp_short
+from .formatting import date_id, month_label, month_short, pct, rp, rp_short
 
 STATIC_DIR = Path(__file__).parent / "static"
 SAFE_PATHS = {"/", "/wilayah-merek", "/outlet-terlemah"}
 
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 templates.env.filters.update(
-    rp=rp, rp_short=rp_short, pct=pct, month_label=month_label, month_short=month_short
+    rp=rp, rp_short=rp_short, pct=pct, month_label=month_label, month_short=month_short, date_id=date_id
 )
 templates.env.globals["required_columns"] = REQUIRED_COLUMNS
 
@@ -72,7 +72,12 @@ def _safe_referer(request: Request) -> str:
     if ref:
         parts = urlsplit(ref)
         if parts.path in SAFE_PATHS:
-            if parts.path == "/wilayah-merek" and parts.query in ("lihat=wilayah", "lihat=merek"):
+            if parts.path == "/wilayah-merek" and parts.query in (
+                "lihat=wilayah",
+                "lihat=cabang",
+                "lihat=merek",
+                "lihat=salesman",
+            ):
                 return f"{parts.path}?{parts.query}"
             return parts.path
     return "/"
@@ -152,8 +157,8 @@ def ringkasan(request: Request) -> HTMLResponse:
 
 @app.get("/wilayah-merek", response_class=HTMLResponse)
 def wilayah_merek(request: Request, lihat: str = "wilayah") -> HTMLResponse:
-    view = lihat if lihat in ("wilayah", "merek") else "wilayah"
-    return render(request, "wilayah_merek.html", "wilayah-merek", "Wilayah dan merek", view=view)
+    view = lihat if lihat in ("wilayah", "cabang", "merek", "salesman") else "wilayah"
+    return render(request, "wilayah_merek.html", "wilayah-merek", "Rincian penjualan", view=view)
 
 
 @app.get("/outlet-terlemah", response_class=HTMLResponse)

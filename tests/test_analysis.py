@@ -4,7 +4,7 @@ If the data file changes, update them together with docs/metrics.md."""
 import pytest
 
 from app.analysis import adaptive_base_floor, change_pct, weakest_analysis, weakest_outlets
-from app.formatting import pct, period_label, rp, rp_short
+from app.formatting import date_id, pct, period_label, rp, rp_short
 
 
 def test_totals(report):
@@ -28,8 +28,35 @@ def test_regions_ranked_and_complete(report):
         "Jabodetabek", "Sumatera", "Jawa Barat", "Jawa Tengah", "Jawa Timur", "Kalimantan",
     ]
     assert regions[0]["total"] == 495_827_800
+    assert [b["name"] for b in regions[0]["branches"]] == ["Tangerang", "Jakarta Barat", "Bekasi"]
+    assert regions[0]["top_salesman"]["name"] == "Citra"
     assert sum(r["total"] for r in regions) == report["totals"]["net"]
     assert sum(r["share_pct"] for r in regions) == pytest.approx(100)
+
+
+def test_branches_and_salesmen_ranked_and_complete(report):
+    branches = report["branches"]
+    assert len(branches) == 13
+    assert branches[0]["name"] == "Tangerang"
+    assert branches[0]["region"] == "Jabodetabek"
+    assert branches[0]["total"] == 249_019_600
+    assert branches[-1]["name"] == "Banjarmasin"
+    assert sum(b["total"] for b in branches) == report["totals"]["net"]
+
+    salesmen = report["salesmen"]
+    named = report["named_salesmen"]
+    assert len(named) == 26
+    assert named[0]["name"] == "Citra"
+    assert named[0]["branch"] == "Tangerang"
+    assert named[0]["total"] == 136_587_300
+    assert named[-1]["name"] == "Bayu"
+    assert named[-1]["branch"] == "Banjarmasin"
+    assert sum(s["total"] for s in salesmen) == report["totals"]["net"]
+
+    ext = report["extremes"]
+    assert ext["highest_outlet"]["outlet_id"] == "OUT1007"
+    assert ext["lowest_outlet"]["outlet_id"] == "OUT1003"
+    assert ext["steepest_drop_salesman"]["name"] == "Teguh"
 
 
 def test_brands_ranked_and_complete(report):
@@ -50,6 +77,8 @@ def test_weakest_outlets(report):
     assert all(o["base"] >= report["weakest_rule"]["min_base_idr"] for o in report["weakest"])
     assert report["weakest"][0]["base_invoices"] == 5
     assert report["weakest"][0]["current_invoices"] == 3
+    assert report["weakest"][0]["salesman"] == "Zaki, Yudi"
+    assert "Zaki" in report["weakest"][0]["salesman_drop_note"]
 
 
 def test_adaptive_base_floor_exact_unrounded():
@@ -121,17 +150,26 @@ def test_change_pct_without_base():
 
 def test_telegram_summary(report):
     text = report["telegram_summary"]
-    assert text.count("\n") >= 12
+    assert text.count("\n") >= 20
+    assert len(text) < 4096  # fits inside a single Telegram message
     for expected in (
         "Ringkasan Penjualan Dua Kelinci — Sep–Okt 2026",
         "Total penjualan bersih: Rp 1,73 miliar (naik 3,6%)",
         "Sep Rp 847,5 jt → Okt Rp 878,4 jt",
-        "Jabodetabek — Rp 495,8 jt (28,7% dari total)",
-        "Kacang Dua Kelinci — Rp 739,8 jt (42,9% dari total)",
-        "1. Minimarket Sido Muncul, Palembang (−69% · −Rp 6,3 jt)",
-        "5. Toko Sinar Abadi, Jakarta Barat (−48% · −Rp 3,4 jt)",
-        "Penurunan rupiah terbesar (akun besar):",
-        "Grosir Sentosa, Bandung (−Rp 31,6 jt · −33%)",
+        "Wilayah terbaik: Jabodetabek — Rp 495,8 jt (28,7% dari total)",
+        "Cabang kota: Tangerang Rp 249,0 jt · Jakarta Barat Rp 168,8 jt · Bekasi Rp 78,0 jt",
+        "Cabang tertinggi: Tangerang (Jabodetabek) — Rp 249,0 jt",
+        "Merek terbaik: Kacang Dua Kelinci — Rp 739,8 jt (42,9% dari total)",
+        "Salesman tertinggi: Citra (Tangerang, Jabodetabek) — Rp 136,6 jt",
+        "Outlet tertinggi: [OUT1007] Grosir Harapan Baru, Tangerang",
+        "Outlet terendah: [OUT1003] Toko Sinar Abadi, Jakarta Barat",
+        "Wilayah & cabang terendah: Kalimantan (Rp 144,2 jt) · Banjarmasin (Rp 32,0 jt)",
+        "Merek & salesman terendah: Roni (Rp 34,4 jt) · Bayu, Banjarmasin (Rp 13,1 jt)",
+        "1. [OUT1043] Minimarket Sido Muncul, Palembang (Sumatera)",
+        "Sales: Zaki, Yudi — drop utama Zaki",
+        "5. [OUT1001] Toko Sinar Abadi, Jakarta Barat (Jabodetabek)",
+        "[OUT1014] Grosir Sentosa, Bandung (Jawa Barat): −Rp 31,6 jt",
+        "drop utama Gita",
     ):
         assert expected in text
 
@@ -156,3 +194,43 @@ def test_rp_and_pct():
 
 def test_period_label_across_years():
     assert period_label(["2026-12", "2027-01"]) == "Des 2026–Jan 2027"
+    assert date_id("2026-10-31") == "31 Okt 2026"
+
+
+def test_outlet_sku_diagnostics(report):
+    by_id = {o["outlet_id"]: o for o in report["outlets"]}
+
+    # Every outlet's SKU deltas sum identically to the outlet's net Rupiah delta
+    for o in report["outlets"]:
+        assert sum(s["change_idr"] for s in o["skus"]) == o["change_idr"]
+        sk = o["sku_summary"]
+        assert sk["total"] == len(o["skus"]) == sk["stopped"] + sk["running"]
+        assert sk["running"] == sk["retained"] + sk["new"]
+
+    sido = by_id["OUT1043"]
+    assert sido["sku_summary"] == {
+        "total": 9,
+        "stopped": 4,
+        "stopped_idr": -3_397_200,
+        "running": 5,
+        "retained": 5,
+        "declining": 4,
+        "growing": 1,
+        "new": 0,
+    }
+    assert sido["skus"][0]["sku"] == "Tic Tac Original 80g"
+    assert sido["skus"][0]["status"] == "berhenti"
+    assert sido["skus"][0]["base_cartons"] == 6 and sido["skus"][0]["current_cartons"] == 0
+    assert any(s["sku"] == "Usagi Wheat Puffs 45g" and s["status"] == "tumbuh" for s in sido["skus"])
+    assert sido["last_order_date"] == "2026-10-31"
+    assert sido["last_order_salesman"] == "Yudi"
+
+    anugerah = by_id["OUT1041"]
+    assert anugerah["sku_summary"]["stopped"] == 5
+    assert anugerah["sku_summary"]["new"] == 3
+    assert anugerah["sku_summary"]["running"] == 8
+
+    sentosa = by_id["OUT1014"]
+    assert sentosa["sku_summary"]["stopped"] == 0
+    assert sentosa["sku_summary"]["running"] == 13
+    assert sentosa["sku_summary"]["declining"] == 9

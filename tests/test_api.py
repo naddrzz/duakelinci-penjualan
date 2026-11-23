@@ -62,6 +62,8 @@ def test_ringkasan_page(client):
         'data-copy="tg"',
         "Semua outlet",
         'id="outlet-search"',
+        'id="f-branch"',
+        'id="f-salesman"',
         'aria-sort="ascending"',  # outlet table starts sorted by % change
         'role="region"',  # scrolling tables are keyboard-focusable regions
         'id="sidebar"',
@@ -70,24 +72,44 @@ def test_ringkasan_page(client):
         "data-open-upload",
         'aria-current="page"',
         "Jabodetabek",
+        "Tangerang",
+        "Citra",
         "Kacang Dua Kelinci",
         "Minimarket Sido Muncul",
+        "OUT1007",
+        "OUT1003",
     ):
         assert expected in html
     assert 'href="/wilayah-merek"' in html and 'href="/outlet-terlemah"' in html
-    assert "bar bar-pos" in html and "bar bar-neg" in html
+    assert 'class="stat-strip"' in html
+    assert "pill pill-pos" in html and "pill pill-neg" in html
 
 
 def test_wilayah_merek_page_switches_view(client):
     html = page(client, "/wilayah-merek")
-    assert 'id="lihat"' in html
+    assert "Rincian penjualan" in html
+    assert "tabbed-sheet" in html
+    assert "numbered-table" in html
+    assert "data-dim-nav" in html
+    assert 'data-dim-tab="wilayah" aria-current="page"' in html
+    assert 'id="search-wilayah"' in html
+    assert 'id="search-salesman"' in html
     assert 'data-view="wilayah" aria-labelledby="h-wilayah">' in html  # visible
     assert 'data-view="merek" aria-labelledby="h-merek" hidden' in html
+    assert 'data-view="salesman" aria-labelledby="h-salesman" hidden' in html
     html = page(client, "/wilayah-merek?lihat=merek")
+    assert 'data-dim-tab="merek" aria-current="page"' in html
     assert 'data-view="wilayah" aria-labelledby="h-wilayah" hidden' in html
     assert 'data-view="merek" aria-labelledby="h-merek">' in html
-    assert html.index("Tabel penjualan per merek") < html.rindex('class="view-switch"')
     assert "Rp 739.781.900" in html  # Kacang Dua Kelinci total, full rupiah
+    html = page(client, "/wilayah-merek?lihat=salesman")
+    assert 'data-dim-tab="salesman" aria-current="page"' in html
+    assert 'data-view="salesman" aria-labelledby="h-salesman">' in html
+    assert "Rp 136.587.300" in html  # Citra total, full rupiah
+    html = page(client, "/wilayah-merek?lihat=cabang")
+    assert 'data-dim-tab="cabang" aria-current="page"' in html
+    assert 'data-view="cabang" aria-labelledby="h-cabang">' in html
+    assert "Rp 249.019.600" in html  # Tangerang total, full rupiah
     html = page(client, "/wilayah-merek?lihat=anything")  # unknown value falls back
     assert 'data-view="wilayah" aria-labelledby="h-wilayah">' in html
 
@@ -98,18 +120,41 @@ def test_outlet_terlemah_page_shows_calculation(client):
         "Hasil dan hitungannya",
         'id="weakest-table"',
         'id="risk-table"',
+        'id="weak-search"',
         "data-lens-switch",
-        "faktur",
+        "Cabang",
+        "Salesman",
+        "Aksi",
+        'data-peek-open="OUT1043"',
+        'data-peek-open="OUT1014"',
+        'id="outlet-side-peek"',
+        "data-peek-close",
+        "data-peek-prev",
+        "data-peek-next",
+        "data-peek-copy",
+        "Frekuensi Faktur",
+        "Volume Karton",
+        "Variasi Produk",
+        "Order Terakhir",
+        "Status &amp; Pergerakan SKU",
+        'data-sku-filter="berhenti"',
+        'data-sku-filter="jalan"',
+        "Tic Tac Original 80g",
+        "Usagi Wheat Puffs 45g",
+        "Atribusi Penurunan per Salesman",
+        "Pemicu utama drop",
+        "Zaki, Yudi",
+        "Palembang",
         "Aturan yang dipakai",
         "Rp 4.927.700",
         "Cara menyaring 52 outlet",
         "Keluarkan 1 outlet baru",
         "Keluarkan 12 outlet kecil",
-        "−Rp 6.308.000 ÷ Rp 9.181.700 × 100",  # Minimarket Sido Muncul
+        "−Rp 6.308.000 ÷ Rp 9.181.700 × 100",
         "−68,7%",
-        "Kenapa tidak memakai cara lain?",
     ):
         assert expected in html
+    assert "Kenapa tidak memakai cara lain?" not in html
     assert html.index('id="weakest-table"') < html.index("Aturan yang dipakai")
 
 
@@ -168,6 +213,91 @@ def test_upload_csv_and_reset_flow(client):
 
     restored = client.get("/api/report").json()
     assert restored["totals"]["net"] == 1_725_966_000
+
+
+def test_custom_csv_has_zero_hardcoded_sample_leakage(client):
+    """Uploading a CSV with completely new months, regions, branches, salesmen, outlets, and SKUs
+    must render 100% real values from that CSV with zero leftover strings from the sample dataset."""
+    custom_csv = (
+        "date,invoice_no,region,branch,outlet_id,outlet_name,outlet_type,salesman,brand,sku,"
+        "qty_carton,price_per_carton_idr,gross_sales_idr,discount_idr,net_sales_idr\n"
+        "2026-12-04,INV-A1,Sulawesi,Makassar,CUST-901,Pasar Segar Panakkukang,Grosir,Daeng,Mix Nut,Mix Nut Spesial 150g,40,250000,10000000,0,10000000\n"
+        "2026-12-12,INV-A2,Sulawesi,Makassar,CUST-901,Pasar Segar Panakkukang,Grosir,Daeng,Kacang Polong,Polong Pedas 80g,20,200000,4000000,0,4000000\n"
+        "2027-01-08,INV-A3,Sulawesi,Makassar,CUST-901,Pasar Segar Panakkukang,Grosir,Daeng,Mix Nut,Mix Nut Spesial 150g,15,250000,3750000,0,3750000\n"
+        "2026-12-06,INV-B1,Bali Nusra,Denpasar,CUST-902,Minimarket Dewata,Minimarket,Putu,Kacang Polong,Polong Hijau 80g,30,200000,6000000,0,6000000\n"
+        "2027-01-14,INV-B2,Bali Nusra,Denpasar,CUST-902,Minimarket Dewata,Minimarket,Putu,Kacang Polong,Polong Hijau 80g,45,200000,9000000,0,9000000\n"
+        "2026-12-09,INV-C1,Bali Nusra,Denpasar,CUST-903,Grosir Pantai Kuta,Grosir,Putu,Mix Nut,Mix Nut Spesial 150g,32,250000,8000000,0,8000000\n"
+        "2027-01-18,INV-C2,Bali Nusra,Denpasar,CUST-903,Grosir Pantai Kuta,Grosir,Putu,Mix Nut,Mix Nut Spesial 150g,40,250000,10000000,0,10000000\n"
+        "2026-12-11,INV-D1,Sulawesi,Makassar,CUST-904,Warung Anging Mammiri,Warung,Daeng,Kacang Polong,Polong Hijau 80g,10,200000,2000000,0,2000000\n"
+        "2027-01-21,INV-D2,Sulawesi,Makassar,CUST-904,Warung Anging Mammiri,Warung,Daeng,Kacang Polong,Polong Hijau 80g,12,200000,2400000,0,2400000\n"
+    ).encode("utf-8")
+
+    forbidden_sample_terms = (
+        "Jabodetabek",
+        "Jawa Barat",
+        "Sumatera",
+        "Palembang",
+        "Tangerang",
+        "Bandung",
+        "Citra",
+        "Zaki",
+        "Yudi",
+        "OUT1043",
+        "OUT1007",
+        "Minimarket Sido Muncul",
+        "Kacang Dua Kelinci",
+        "Tic Tac Original 80g",
+        "1.725.966.000",
+        "4.927.700",
+        "Sep–Okt",
+    )
+
+    try:
+        res = client.post(
+            "/api/upload",
+            files={"file": ("penjualan_indonesia_timur.csv", custom_csv, "text/csv")},
+            headers={"Accept": "application/json"},
+        )
+        assert res.status_code == 200
+
+        home = page(client, "/")
+        rincian = page(client, "/wilayah-merek?lihat=salesman")
+        weak = page(client, "/outlet-terlemah")
+
+        for expected_home in (
+            "Des 2026–Jan 2027",
+            "Bali Nusra",
+            "Sulawesi",
+            "Denpasar",
+            "Makassar",
+            "Putu",
+            "Daeng",
+            "1 Prioritas Tindak Lanjut",
+            "CUST-901",
+            "Pasar Segar Panakkukang",
+        ):
+            assert expected_home in home
+
+        for expected_rincian in ("Putu", "Daeng", "Denpasar", "Makassar", "Rp 55.150.000"):
+            assert expected_rincian in rincian
+
+        for expected_weak in (
+            "Des 2026 → Jan 2027",
+            'data-peek-open="CUST-901"',
+            "Pasar Segar Panakkukang",
+            "Polong Pedas 80g",       # stopped SKU in CUST-901
+            "Mix Nut Spesial 150g",   # still-running SKU in CUST-901
+            "21 Jan 2027",            # or 8 Jan 2027 on CUST-901
+        )[:5]:
+            assert expected_weak in weak
+        assert "8 Jan 2027" in weak  # real last_order_date of CUST-901 from CSV
+
+        for html_doc in (home, rincian, weak):
+            for forbidden in forbidden_sample_terms:
+                assert forbidden not in html_doc
+    finally:
+        reset_res = client.post("/api/report/reset", headers={"Accept": "application/json"})
+        assert reset_res.status_code == 200
 
 
 def test_upload_csv_validation_errors_preserve_active_report(client):

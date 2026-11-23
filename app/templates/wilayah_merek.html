@@ -4,137 +4,130 @@
 {%- set p = r.period -%}
 {%- set base, current = p.base, p.current -%}
 {%- set t = r.totals -%}
-{%- set views = [("wilayah", "Wilayah", "wilayah", r.regions), ("merek", "Merek", "merek", r.brands)] -%}
+{%- set views = [
+  ("wilayah", "Wilayah", "wilayah", r.regions, "Cabang Utama", "Cari wilayah, cabang, atau salesman…"),
+  ("cabang", "Cabang Kota", "cabang", r.branches, "Wilayah", "Cari cabang, wilayah, atau salesman…"),
+  ("merek", "Merek", "merek", r.brands, "Wilayah Utama", "Cari merek, wilayah, atau salesman…"),
+  ("salesman", "Salesman", "salesman", r.salesmen, "Cabang", "Cari salesman, cabang, atau merek…")
+] -%}
 
 {{ m.page_head(
-     "Wilayah dan merek",
-     "Penjualan bersih " ~ base|month_label ~ " dan " ~ current|month_label ~ " dalam rupiah penuh, dibandingkan per wilayah atau per merek."
+     "Rincian penjualan",
+     ("Tabel rekapitulasi penjualan bersih periode " ~ p.label ~ " (perbandingan " ~ (base|month_label) ~ " → " ~ (current|month_label) ~ ") dalam rupiah penuh per wilayah, cabang kota, merek, dan salesman.") if p.months|length > 2 else ("Tabel rekapitulasi penjualan bersih " ~ (base|month_label) ~ " dan " ~ (current|month_label) ~ " dalam rupiah penuh per wilayah, cabang kota, merek, dan salesman."),
+     "Rekapitulasi Data · " ~ p.label
    ) }}
 
-{%- for key, label, noun, lines in views %}
-{%- set select_id = "lihat" if loop.first else "lihat-" ~ key %}
-{%- set by_change = lines|rejectattr("change_pct", "none")|sort(attribute="change_pct")|list %}
-<section class="stack view" data-view="{{ key }}" aria-labelledby="h-{{ key }}"{% if view != key %} hidden{% endif %}>
-  <h2 id="h-{{ key }}" class="sr-only">Penjualan per {{ noun }}</h2>
-  <dl class="tiles">
-    <div class="card tile">
-      <dt>{{ label }} terbesar</dt>
-      <dd>
-        <span class="tile-value">{{ lines[0].name }}</span>
-        <span class="tile-line"><strong class="num">{{ lines[0].total|rp_short }}</strong> · {{ lines[0].share_pct|pct(signed=false) }} dari total</span>
-      </dd>
-    </div>
-    {% if by_change %}
-    <div class="card tile">
-      <dt>Tumbuh tercepat</dt>
-      <dd>
-        <span class="tile-value">{{ by_change[-1].name }}</span>
-        <span class="tile-line">{{ m.pill(by_change[-1].change_pct) }} {{ by_change[-1].by_month[base]|rp_short }} &rarr; {{ by_change[-1].by_month[current]|rp_short }}</span>
-      </dd>
-    </div>
-    <div class="card tile">
-      <dt>Turun terdalam</dt>
-      <dd>
-        <span class="tile-value">{{ by_change[0].name }}</span>
-        <span class="tile-line">{{ m.pill(by_change[0].change_pct) }} {{ by_change[0].by_month[base]|rp_short }} &rarr; {{ by_change[0].by_month[current]|rp_short }}</span>
-      </dd>
-    </div>
-    {% endif %}
-    <div class="card tile">
-      <dt>Total {{ lines|length }} {{ noun }}</dt>
-      <dd>
-        <span class="tile-value">{{ t.net|rp_short }}</span>
-        <span class="tile-line">{{ m.pill(t.change_pct) }} dari {{ base|month_short }} ke {{ current|month_short }}</span>
-      </dd>
-    </div>
-  </dl>
+<div class="tabbed-sheet">
+  <nav class="dim-tabs" aria-label="Kategori rincian penjualan" data-dim-nav>
+    {%- for v_key, v_label, v_noun, v_lines, _, _ in views %}
+    {%- set v_cnt = (r.named_salesmen|length if v_key == "salesman" and r.named_salesmen else v_lines|length) %}
+    <a href="/wilayah-merek?lihat={{ v_key }}" class="dim-tab" data-dim-tab="{{ v_key }}"{% if view == v_key %} aria-current="page"{% endif %}>
+      <span class="dim-tab-label">{{ v_label }}</span>
+      <span class="dim-tab-count">{{ v_cnt }}</span>
+    </a>
+    {%- endfor %}
+  </nav>
 
-  <div class="card composition-card">
-    <div class="card-head">
-      <div>
-        <h3 class="card-title">Komposisi pangsa penjualan per {{ noun }}</h3>
-        <p class="card-sub">Proporsi terhadap total penjualan bersih {{ t.net|rp }}</p>
+  {%- for key, label, noun, lines, ctx_col, search_ph in views %}
+  {%- set max_share = [lines[0].share_pct, 0.1]|max if lines else 1 -%}
+  <section class="view" data-view="{{ key }}" aria-labelledby="h-{{ key }}"{% if view != key %} hidden{% endif %}>
+    <h2 id="h-{{ key }}" class="sr-only">Tabel penjualan per {{ noun }}</h2>
+
+    <div class="clean-section table-section">
+      <div class="table-head-bar">
+        <div class="table-title-inline">
+          {%- set unnamed_cnt = (lines|length - (r.named_salesmen|length)) if key == "salesman" and r.named_salesmen else 0 %}
+          {%- set count_label = (r.named_salesmen|length ~ " salesman (+" ~ unnamed_cnt ~ " belum tercatat)") if unnamed_cnt > 0 else (lines|length ~ " " ~ noun) %}
+          <h3 class="section-title" id="t-{{ key }}">Tabel penjualan per {{ noun }}</h3>
+          <span class="section-meta" data-quick-count data-noun="{{ noun }}" data-default-label="{{ count_label }}" role="status">{{ count_label }}</span>
+          <button type="button" class="btn btn-ghost" data-quick-reset hidden>Reset</button>
+        </div>
+
+        <div class="table-search-inline" data-quick-toolbar hidden>
+          <div class="search">
+            <label for="search-{{ key }}" class="sr-only">Cari {{ noun }}</label>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
+            <input type="search" id="search-{{ key }}" class="field field-compact" placeholder="{{ search_ph }}" enterkeyhint="search" autocomplete="off" spellcheck="false" data-quick-input>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap" role="region" aria-labelledby="t-{{ key }}" tabindex="0">
+        <table class="data sortable numbered-table">
+          <caption class="sr-only">Tabel penjualan per {{ noun }}, {{ base|month_label }} dan {{ current|month_label }}</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="idx-col"><span class="th-label th-center">#</span></th>
+              {{ m.sort_th(label, "text", cls="sticky-col") }}
+              {{ m.sort_th(ctx_col, "text") }}
+              {{ m.sort_th(base|month_short, "num", cls="num") }}
+              {{ m.sort_th(current|month_short, "num", cls="num") }}
+              {{ m.sort_th("Selisih", "num", cls="num") }}
+              {{ m.sort_th("Total", "num", "descending", "num") }}
+              {{ m.sort_th("Tren", "num", cls="num") }}
+              {{ m.sort_th("Porsi", "num", cls="num share-col") }}
+            </tr>
+          </thead>
+          <tbody>
+            {%- for l in lines %}
+            {%- set diff = l.by_month[current] - l.by_month[base] %}
+            {%- if key == "wilayah" %}
+            {%- set row_search = l.name ~ ' ' ~ l.branches_label ~ ' ' ~ (l.top_branch.name if l.top_branch else '') ~ ' ' ~ l.top_salesman.name %}
+            {%- elif key == "cabang" %}
+            {%- set row_search = l.name ~ ' ' ~ l.region ~ ' ' ~ l.salesmen_label %}
+            {%- elif key == "merek" %}
+            {%- set row_search = l.name ~ ' ' ~ (l.top_region.name if l.top_region else '') ~ ' ' ~ (l.top_branch.name if l.top_branch else '') ~ ' ' ~ l.top_salesman.name %}
+            {%- else %}
+            {%- set row_search = l.name ~ ' ' ~ l.branch ~ ' ' ~ l.region ~ ' ' ~ l.branches_label ~ ' ' ~ l.brands_label %}
+            {%- endif %}
+            <tr data-search="{{ row_search|lower }}">
+              <td class="idx-col"><span class="row-idx" aria-hidden="true"></span></td>
+              <th scope="row" class="sticky-col" data-value="{{ l.name }}">
+                <span class="outlet-name">{{ l.name }}</span>
+              </th>
+              <td>
+                {%- if key == "wilayah" %}{{ l.top_branch.name if l.top_branch else "—" }}
+                {%- elif key == "cabang" %}{{ l.region }}
+                {%- elif key == "merek" %}{{ l.top_region.name if l.top_region else "—" }}
+                {%- else %}{{ l.branch }}{% endif -%}
+              </td>
+              <td class="num" data-value="{{ l.by_month[base] }}">{{ l.by_month[base]|rp }}</td>
+              <td class="num" data-value="{{ l.by_month[current] }}">{{ l.by_month[current]|rp }}</td>
+              <td class="num" data-value="{{ diff }}">{{ diff|rp }}</td>
+              <td class="num strong" data-value="{{ l.total }}">{{ l.total|rp }}</td>
+              <td class="num" data-value="{{ l.change_pct if l.change_pct is not none else '' }}">{{ m.pill(l.change_pct) }}</td>
+              <td class="share-col" data-value="{{ l.share_pct }}">
+                <div class="share-inline">
+                  {{ m.bar(l.share_pct / max_share * 100, lead=loop.first) }}
+                  <span class="num">{{ l.share_pct|pct(signed=false) }}</span>
+                </div>
+              </td>
+            </tr>
+            {%- endfor %}
+            <tr class="empty-row" hidden>
+              <td colspan="9">
+                <p><strong>Tidak ada {{ noun }} yang cocok</strong><span data-empty-query></span>.</p>
+                <button type="button" class="btn btn-secondary btn-compact" data-quick-reset>Reset pencarian</button>
+              </td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td class="idx-col"></td>
+              <th scope="row" class="sticky-col">Total Keseluruhan</th>
+              <td>{% if key in ("cabang", "merek") %}{{ r.regions|length }} wilayah{% else %}{{ t.branches }} cabang{% endif %}</td>
+              <td class="num">{{ t.by_month[base]|rp }}</td>
+              <td class="num">{{ t.by_month[current]|rp }}</td>
+              <td class="num">{{ (t.by_month[current] - t.by_month[base])|rp }}</td>
+              <td class="num strong">{{ t.net|rp }}</td>
+              <td class="num">{{ m.pill(t.change_pct) }}</td>
+              <td class="num strong">100%</td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
-    <div class="stacked-bar" aria-hidden="true">
-      {%- for l in lines %}
-      <span class="seg seg-{{ loop.index0 % 8 }}" style="width: {{ '%.2f'|format([0, l.share_pct]|max) }}%" title="{{ l.name }}: {{ l.share_pct|pct(signed=false) }}"></span>
-      {%- endfor %}
-    </div>
-    <ul class="comp-legend">
-      {%- for l in lines %}
-      <li>
-        <span class="swatch seg-{{ loop.index0 % 8 }}" aria-hidden="true"></span>
-        <span class="comp-name">{{ l.name }}</span>
-        <span class="comp-pct num">{{ l.share_pct|pct(signed=false) }}</span>
-      </li>
-      {%- endfor %}
-    </ul>
-  </div>
-
-  <div class="card table-section">
-    <div class="card-head">
-      <div>
-        <h3 class="card-title" id="t-{{ key }}">Tabel penjualan per {{ noun }}</h3>
-        <p class="card-sub">Pilih judul kolom untuk mengurutkan.</p>
-      </div>
-      <form class="view-switch" method="get" action="/wilayah-merek" data-view-switch>
-        <label for="{{ select_id }}">Tampilan</label>
-        <select id="{{ select_id }}" name="lihat" class="field">
-          {%- for v_key, v_label, v_noun, v_lines in views %}
-          <option value="{{ v_key }}"{% if key == v_key %} selected{% endif %}>Per {{ v_noun }} ({{ v_lines|length }} {{ v_noun }})</option>
-          {%- endfor %}
-        </select>
-        <noscript><button type="submit" class="btn btn-secondary">Tampilkan</button></noscript>
-      </form>
-    </div>
-    <div class="table-wrap" role="region" aria-labelledby="t-{{ key }}" tabindex="0">
-      <table class="data sortable wide">
-        <caption class="sr-only">Penjualan per {{ noun }}, {{ base|month_label }} dan {{ current|month_label }}</caption>
-        <thead>
-          <tr>
-            {{ m.sort_th(label, "text", cls="sticky-col") }}
-            {{ m.sort_th(base|month_label, "num", cls="num") }}
-            {{ m.sort_th(current|month_label, "num", cls="num") }}
-            {{ m.sort_th("Total", "num", "descending", "num") }}
-            {{ m.sort_th("Selisih", "num", cls="num") }}
-            {{ m.sort_th("Perubahan", "num", cls="num") }}
-            {{ m.sort_th("Porsi dari total", "num", cls="share-col") }}
-          </tr>
-        </thead>
-        <tbody>
-          {%- for l in lines %}
-          {%- set diff = l.by_month[current] - l.by_month[base] %}
-          <tr>
-            <th scope="row" class="sticky-col">{{ l.name }}</th>
-            <td class="num" data-value="{{ l.by_month[base] }}">{{ l.by_month[base]|rp }}</td>
-            <td class="num" data-value="{{ l.by_month[current] }}">{{ l.by_month[current]|rp }}</td>
-            <td class="num strong" data-value="{{ l.total }}">{{ l.total|rp }}</td>
-            <td class="num" data-value="{{ diff }}">{{ diff|rp }}</td>
-            <td class="num" data-value="{{ l.change_pct if l.change_pct is not none else '' }}">{{ m.pill(l.change_pct) }}</td>
-            <td class="share-col" data-value="{{ l.share_pct }}">
-              <span class="share">
-                {{ m.bar(l.share_pct, l.change_pct) }}
-                <span class="num">{{ l.share_pct|pct(signed=false) }}</span>
-              </span>
-            </td>
-          </tr>
-          {%- endfor %}
-        </tbody>
-        <tfoot>
-          <tr>
-            <th scope="row" class="sticky-col">Total</th>
-            <td class="num">{{ t.by_month[base]|rp }}</td>
-            <td class="num">{{ t.by_month[current]|rp }}</td>
-            <td class="num strong">{{ t.net|rp }}</td>
-            <td class="num">{{ (t.by_month[current] - t.by_month[base])|rp }}</td>
-            <td class="num">{{ m.pill(t.change_pct) }}</td>
-            <td class="share-col"><span class="num">100%</span></td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-  </div>
-</section>
-{%- endfor %}
+  </section>
+  {%- endfor %}
+</div>
 {% endblock %}

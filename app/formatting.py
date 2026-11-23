@@ -49,6 +49,14 @@ def month_short(month: str) -> str:
     return MONTHS_ID[int(month.split("-")[1]) - 1]
 
 
+def date_id(iso_date: str) -> str:
+    """'2026-10-31' -> '31 Okt 2026'."""
+    if not iso_date:
+        return "—"
+    year, mon, day = iso_date.split("-")
+    return f"{int(day)} {MONTHS_ID[int(mon) - 1]} {year}"
+
+
 def period_label(months: list[str]) -> str:
     """['2026-09', '2026-10'] -> 'Sep–Okt 2026'."""
     first, last = months[0], months[-1]

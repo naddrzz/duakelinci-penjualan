@@ -6,11 +6,15 @@
 
   const PAGE_KEYS = { "/": "ringkasan", "/wilayah-merek": "wilayah-merek", "/outlet-terlemah": "outlet-terlemah" };
   const ROUTES = new Set(Object.keys(PAGE_KEYS));
-  // A skeleton that flashes for a few milliseconds reads as a glitch, so once it is
-  // shown it stays at least this long.
   const MIN_SKELETON_MS = 350;
   const collator = new Intl.Collator("id", { sensitivity: "base", numeric: true });
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const isCoarsePointer = () => window.matchMedia("(pointer: coarse)").matches;
+  const matchesQuery = (haystack, rawQuery) => {
+    const q = rawQuery.trim().toLowerCase();
+    if (!q) return true;
+    return q.split(/\s+/).every((token) => haystack.includes(token));
+  };
 
   // ---------------------------------------------------------------- copy
   function initCopy(root) {
@@ -39,11 +43,11 @@
             text.select();
             if (!document.execCommand("copy")) throw new Error("copy failed");
           }
-          say("Tersalin. Tinggal tempel di Telegram.", true);
+          say("Tersalin ke clipboard.", true);
         } catch {
           text.focus();
           text.select();
-          say("Tidak bisa menyalin otomatis. Teks sudah dipilih, tekan Ctrl+C.", false);
+          say("Teks dipilih — tekan Ctrl+C.", false);
         }
       });
     });
@@ -66,7 +70,7 @@
       const va = cellValue(a.cells[idx], kind);
       const vb = cellValue(b.cells[idx], kind);
       if (va === null && vb === null) return 0;
-      if (va === null) return 1; // empty values (new outlets) always last
+      if (va === null) return 1;
       if (vb === null) return -1;
       return sign * (kind === "num" ? va - vb : collator.compare(va, vb));
     });
@@ -92,68 +96,81 @@
   function initOutletTable(root) {
     const table = root.querySelector("#outlet-table");
     const toolbar = root.querySelector("[data-outlet-toolbar]");
-    if (!table || !toolbar) return;
-    const sortWrap = root.querySelector("[data-outlet-sort]");
+    const filterStrip = root.querySelector("[data-outlet-filters]");
+    if (!table || !toolbar || !filterStrip) return;
+    const sortWrap = filterStrip.querySelector("[data-outlet-sort]");
+    const statusGroup = root.querySelector("[data-status-group]");
     toolbar.hidden = false;
-    sortWrap.hidden = false;
+    filterStrip.hidden = false;
+    if (sortWrap) sortWrap.hidden = false;
 
     const search = toolbar.querySelector("#outlet-search");
-    const region = toolbar.querySelector("#f-region");
-    const type = toolbar.querySelector("#f-type");
-    const sortSelect = sortWrap.querySelector("#outlet-sort");
+    const region = filterStrip.querySelector("#f-region");
+    const branch = filterStrip.querySelector("#f-branch");
+    const salesman = filterStrip.querySelector("#f-salesman");
+    const type = filterStrip.querySelector("#f-type");
+    const sortSelect = sortWrap?.querySelector("#outlet-sort");
     const count = root.querySelector("[data-outlet-count]");
     const resetButtons = [...root.querySelectorAll("[data-outlet-reset]")];
     const lineReset = root.querySelector(".result-info [data-outlet-reset]");
     const emptyRow = table.querySelector(".empty-row");
     const emptyQuery = table.querySelector("[data-empty-query]");
     const rows = [...table.tBodies[0].rows].filter((row) => !row.classList.contains("empty-row"));
-    const statusValue = () => toolbar.querySelector('input[name="status"]:checked').value;
+    const statusValue = () => statusGroup?.querySelector('input[name="status"]:checked')?.value || "";
 
     function apply() {
-      const query = search.value.trim().toLowerCase();
+      const rawQuery = search.value.trim();
       const st = statusValue();
       let shown = 0;
       rows.forEach((row) => {
         const match =
-          (!query || row.dataset.search.includes(query)) &&
+          matchesQuery(row.dataset.search || "", rawQuery) &&
           (!region.value || row.dataset.region === region.value) &&
+          (!branch?.value || row.dataset.branch === branch.value) &&
+          (!salesman?.value || (row.dataset.salesmen || "").split("|").includes(salesman.value)) &&
           (!type.value || row.dataset.type === type.value) &&
           (!st || row.dataset.status.split(" ").includes(st));
         row.hidden = !match;
         if (match) shown += 1;
       });
-      const filtered = Boolean(query || region.value || type.value || st);
+      const filtered = Boolean(rawQuery || region.value || branch?.value || salesman?.value || type.value || st);
       emptyRow.hidden = shown > 0;
-      emptyQuery.textContent = query ? ` dengan “${search.value.trim()}”` : "";
+      emptyQuery.textContent = rawQuery ? ` dengan “${rawQuery}”` : "";
       count.textContent = filtered ? `Menampilkan ${shown} dari ${rows.length} outlet` : `${rows.length} outlet`;
-      lineReset.hidden = !filtered;
+      if (lineReset) lineReset.hidden = !filtered;
     }
 
     function reset() {
       search.value = "";
       region.value = "";
+      if (branch) branch.value = "";
+      if (salesman) salesman.value = "";
       type.value = "";
-      const all = toolbar.querySelector('input[name="status"][value=""]');
-      all.checked = true;
-      all.dispatchEvent(new Event("change", { bubbles: true }));
+      const all = statusGroup?.querySelector('input[name="status"][value=""]');
+      if (all) {
+        all.checked = true;
+        all.dispatchEvent(new Event("change", { bubbles: true }));
+      }
       apply();
-      search.focus();
+      if (!isCoarsePointer()) search.focus();
     }
 
     search.addEventListener("input", apply);
-    [region, type].forEach((el) => el.addEventListener("change", apply));
-    toolbar.querySelectorAll('input[name="status"]').forEach((el) => el.addEventListener("change", apply));
+    [region, branch, salesman, type].filter(Boolean).forEach((el) => el.addEventListener("change", apply));
+    statusGroup?.querySelectorAll('input[name="status"]').forEach((el) => el.addEventListener("change", apply));
     resetButtons.forEach((btn) => btn.addEventListener("click", reset));
 
-    const headers = [...table.tHead.rows[0].cells];
-    sortSelect.addEventListener("change", () => {
-      const [index, dir] = sortSelect.value.split(":");
-      if (dir) sortTable(table, headers[Number(index)], dir);
-    });
-    table.addEventListener("sorted", (event) => {
-      const value = `${event.detail.index}:${event.detail.dir}`;
-      sortSelect.value = [...sortSelect.options].some((o) => o.value === value) ? value : "custom";
-    });
+    if (sortSelect) {
+      const headers = [...table.tHead.rows[0].cells];
+      sortSelect.addEventListener("change", () => {
+        const [index, dir] = sortSelect.value.split(":");
+        if (dir) sortTable(table, headers[Number(index)], dir);
+      });
+      table.addEventListener("sorted", (event) => {
+        const value = `${event.detail.index}:${event.detail.dir}`;
+        sortSelect.value = [...sortSelect.options].some((o) => o.value === value) ? value : "custom";
+      });
+    }
   }
 
   // ---------------------------------------------------------------- segmented control
@@ -182,33 +199,44 @@
     });
   }
 
-  // ---------------------------------------------------------------- region/brand switch
+  // ---------------------------------------------------------------- dimension underline tabs
   function initViewSwitch(root) {
-    const forms = [...root.querySelectorAll("[data-view-switch]")];
-    if (!forms.length) return;
+    const nav = root.querySelector("[data-dim-nav]");
+    if (!nav) return;
+    const tabs = [...nav.querySelectorAll("[data-dim-tab]")];
     const views = [...root.querySelectorAll("[data-view]")];
-    const selects = forms.map((f) => f.querySelector("select")).filter(Boolean);
-    forms.forEach((form) => form.addEventListener("submit", (event) => event.preventDefault()));
-    selects.forEach((select) => {
-      select.addEventListener("change", () => {
-        const nextKey = select.value;
-        const wasKeyboard = select.matches(":focus-visible");
-        let activeSelect = null;
+
+    const revealTab = (tab, smooth = false) => {
+      if (!tab || nav.scrollWidth <= nav.clientWidth) return;
+      const targetLeft = tab.offsetLeft - (nav.clientWidth - tab.offsetWidth) / 2;
+      nav.scrollTo({
+        left: Math.max(0, Math.min(nav.scrollWidth - nav.clientWidth, targetLeft)),
+        behavior: smooth ? "smooth" : "instant",
+      });
+    };
+
+    const initialTab = tabs.find((t) => t.getAttribute("aria-current") === "page");
+    if (initialTab) requestAnimationFrame(() => revealTab(initialTab, false));
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", (event) => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        const nextKey = tab.dataset.dimTab;
+        tabs.forEach((t) => {
+          if (t.dataset.dimTab === nextKey) t.setAttribute("aria-current", "page");
+          else t.removeAttribute("aria-current");
+        });
+        revealTab(tab, true);
         views.forEach((view) => {
           const active = view.dataset.view === nextKey;
           view.hidden = !active;
           if (active) {
-            activeSelect = view.querySelector("[data-view-switch] select");
-            if (activeSelect) activeSelect.value = nextKey;
             view.classList.remove("is-entering");
             void view.offsetWidth;
             view.classList.add("is-entering");
           }
         });
-        select.value = nextKey;
-        if (wasKeyboard && activeSelect) {
-          activeSelect.focus({ preventScroll: true });
-        }
         const url = new URL(location.href);
         url.searchParams.set("lihat", nextKey);
         history.replaceState(history.state, "", url);
@@ -216,71 +244,449 @@
     });
   }
 
-  // ---------------------------------------------------------------- dual-lens switch on outlet terlemah
+  // ---------------------------------------------------------------- quick table search (wilayah/cabang/merek/salesman)
+  function initQuickTables(root) {
+    root.querySelectorAll("[data-quick-toolbar]").forEach((toolbar) => {
+      const section = toolbar.closest(".table-section");
+      const table = section?.querySelector("table.data");
+      const input = toolbar.querySelector("[data-quick-input]");
+      const countEl = section?.querySelector("[data-quick-count]");
+      const lineReset = section?.querySelector(".table-title-inline [data-quick-reset]");
+      const emptyRow = table?.querySelector(".empty-row");
+      const emptyQuery = table?.querySelector("[data-empty-query]");
+      if (!table || !input || !countEl) return;
+
+      toolbar.hidden = false;
+      const noun = countEl.dataset.noun || "baris";
+      const rows = [...table.tBodies[0].rows].filter((r) => !r.classList.contains("empty-row"));
+      const defaultLabel = countEl.dataset.defaultLabel || `${rows.length} ${noun}`;
+      const resetBtns = [...section.querySelectorAll("[data-quick-reset]")];
+
+      function apply() {
+        const rawQuery = input.value.trim();
+        let shown = 0;
+        rows.forEach((row) => {
+          const match = matchesQuery(row.dataset.search || "", rawQuery);
+          row.hidden = !match;
+          if (match) shown += 1;
+        });
+        const filtered = Boolean(rawQuery);
+        if (emptyRow) emptyRow.hidden = shown > 0;
+        if (emptyQuery) emptyQuery.textContent = rawQuery ? ` dengan “${rawQuery}”` : "";
+        countEl.textContent = filtered ? `Menampilkan ${shown} dari ${rows.length} ${noun}` : defaultLabel;
+        if (lineReset) lineReset.hidden = !filtered;
+      }
+
+      input.addEventListener("input", apply);
+      resetBtns.forEach((btn) =>
+        btn.addEventListener("click", () => {
+          input.value = "";
+          apply();
+          if (!isCoarsePointer()) input.focus();
+        })
+      );
+      apply();
+    });
+  }
+
+  // ---------------------------------------------------------------- dual-lens switch & search on outlet terlemah
   function initLensSwitch(root) {
     const container = root.querySelector("[data-lens-root]");
-    const switcher = container?.querySelector("[data-lens-switch]");
-    if (!container || !switcher) return;
+    if (!container) return;
+    const switcher = container.querySelector("[data-lens-switch]");
     const panels = [...container.querySelectorAll("[data-lens-panel]")];
-    if (panels.length < 2) return;
-    switcher.hidden = false;
+    const toolbar = container.querySelector("[data-weak-toolbar]");
+    const searchInput = toolbar?.querySelector("#weak-search");
+    const countEl = container.querySelector("[data-weak-count]");
+    const lineReset = container.querySelector(".table-title-inline [data-weak-reset]");
+    const resetBtns = [...container.querySelectorAll("[data-weak-reset]")];
+
+    if (switcher && panels.length >= 2) switcher.hidden = false;
+    if (toolbar && searchInput) toolbar.hidden = false;
+
+    const applySearch = () => {
+      const activePanel = panels.find((p) => !p.hidden) || panels[0];
+      const table = activePanel?.querySelector("table.data");
+      if (!table || !countEl) return;
+      const rawQuery = searchInput ? searchInput.value.trim() : "";
+      const rows = [...table.tBodies[0].rows].filter((r) => !r.classList.contains("empty-row"));
+      const emptyRow = table.querySelector(".empty-row");
+      const emptyQuery = table.querySelector("[data-empty-query]");
+      let shown = 0;
+      rows.forEach((row) => {
+        const match = matchesQuery(row.dataset.search || "", rawQuery);
+        row.hidden = !match;
+        if (match) shown += 1;
+      });
+      const filtered = Boolean(rawQuery);
+      if (emptyRow) emptyRow.hidden = shown > 0;
+      if (emptyQuery) emptyQuery.textContent = rawQuery ? ` dengan “${rawQuery}”` : "";
+      countEl.textContent = filtered ? `Menampilkan ${shown} dari ${rows.length} outlet` : `${rows.length} outlet`;
+      if (lineReset) lineReset.hidden = !filtered;
+    };
 
     const sync = (animate = false) => {
-      const selected = switcher.querySelector("input:checked")?.value || "pct";
-      panels.forEach((panel) => {
-        const active = panel.dataset.lensPanel === selected;
-        panel.hidden = !active;
-        if (active && animate) {
-          panel.classList.remove("is-entering");
-          void panel.offsetWidth;
-          panel.classList.add("is-entering");
+      if (switcher && panels.length >= 2) {
+        const selected = switcher.querySelector("input:checked")?.value || "pct";
+        panels.forEach((panel) => {
+          const active = panel.dataset.lensPanel === selected;
+          panel.hidden = !active;
+          if (active && animate) {
+            panel.classList.remove("is-entering");
+            void panel.offsetWidth;
+            panel.classList.add("is-entering");
+          }
+        });
+      }
+      applySearch();
+    };
+
+    sync(false);
+    switcher?.addEventListener("change", () => sync(true));
+    searchInput?.addEventListener("input", applySearch);
+    resetBtns.forEach((btn) =>
+      btn.addEventListener("click", () => {
+        if (!searchInput) return;
+        searchInput.value = "";
+        applySearch();
+        if (!isCoarsePointer()) searchInput.focus();
+      })
+    );
+  }
+
+  // ---------------------------------------------------------------- Notion-style outlet side peek
+  let peekAbort = null;
+
+  function initSidePeek(root) {
+    peekAbort?.abort();
+    peekAbort = null;
+
+    const peek = root.querySelector("#outlet-side-peek");
+    const container = root.querySelector("[data-lens-root]");
+    if (!peek || !container) return;
+
+    peekAbort = new AbortController();
+    const { signal } = peekAbort;
+
+    const backdrop = root.querySelector("[data-peek-backdrop]");
+    const closeBtn = peek.querySelector("[data-peek-close]");
+    const prevBtn = peek.querySelector("[data-peek-prev]");
+    const nextBtn = peek.querySelector("[data-peek-next]");
+    const posEl = peek.querySelector("[data-peek-pos]");
+    const copyBtn = peek.querySelector("[data-peek-copy]");
+    const copyStatus = peek.querySelector("#peek-copy-status");
+    const peekBody = peek.querySelector(".peek-body");
+    const sheets = [...peek.querySelectorAll("[data-peek-item]")];
+    const switcher = container.querySelector("[data-lens-switch]");
+    const searchInput = container.querySelector("#weak-search");
+
+    peek.hidden = false;
+    peek.inert = true;
+    if (backdrop) backdrop.hidden = false;
+
+    let activeId = null;
+    let lastTrigger = null;
+    let statusTimer;
+    let iconTimer;
+
+    const getActiveLensKey = () => switcher?.querySelector("input:checked")?.value || "pct";
+    const getActivePanel = () =>
+      [...container.querySelectorAll("[data-lens-panel]")].find((p) => !p.hidden) ||
+      container.querySelector("[data-lens-panel]");
+    const getVisibleRows = () => {
+      const table = getActivePanel()?.querySelector("table.data");
+      if (!table?.tBodies[0]) return [];
+      return [...table.tBodies[0].rows].filter((r) => !r.hidden && !r.classList.contains("empty-row"));
+    };
+
+    const clearCopyFeedback = () => {
+      clearTimeout(statusTimer);
+      clearTimeout(iconTimer);
+      if (copyStatus) {
+        copyStatus.textContent = "";
+        copyStatus.classList.remove("ok");
+      }
+      if (copyBtn) delete copyBtn.dataset.copied;
+    };
+
+    const mqCompactPos = window.matchMedia("(max-width: 380px)");
+
+    const syncPeekMeta = () => {
+      if (!activeId) return;
+      const lensKey = getActiveLensKey();
+      const lensTitle = lensKey === "idr" ? "Kehilangan Rp" : "Kemerosotan %";
+      const activePanel = getActivePanel();
+      const visibleRows = getVisibleRows();
+      const idx = visibleRows.findIndex((r) => r.dataset.peekRow === activeId);
+
+      container.querySelectorAll("tr[data-peek-row]").forEach((row) => {
+        const isCurrent = activePanel?.contains(row) && row.dataset.peekRow === activeId;
+        row.classList.toggle("is-peeked", Boolean(isCurrent));
+      });
+      container.querySelectorAll("[data-peek-open]").forEach((btn) => {
+        const isCurrent = activePanel?.contains(btn) && btn.dataset.peekOpen === activeId;
+        btn.setAttribute("aria-expanded", String(Boolean(isCurrent)));
+      });
+
+      const activeSheet = sheets.find((s) => s.dataset.peekItem === activeId);
+      const rankTag = activeSheet?.querySelector("[data-peek-rank-tag]");
+      if (idx >= 0) {
+        if (posEl) {
+          posEl.textContent = mqCompactPos.matches
+            ? `${idx + 1} / ${visibleRows.length}`
+            : `${idx + 1} dari ${visibleRows.length} outlet`;
+        }
+        if (prevBtn) prevBtn.disabled = idx <= 0;
+        if (nextBtn) nextBtn.disabled = idx >= visibleRows.length - 1;
+        if (rankTag) rankTag.textContent = `Peringkat #${idx + 1} ${lensTitle}`;
+      } else {
+        if (posEl) posEl.textContent = `${visibleRows.length} outlet`;
+        if (prevBtn) prevBtn.disabled = true;
+        if (nextBtn) nextBtn.disabled = visibleRows.length === 0;
+        if (rankTag) rankTag.textContent = `Evaluasi ${lensTitle}`;
+      }
+    };
+
+    mqCompactPos.addEventListener("change", () => { if (activeId) syncPeekMeta(); }, { signal });
+
+    const closePeek = ({ restoreFocus = false } = {}) => {
+      if (!activeId) return;
+      activeId = null;
+      delete peek.dataset.open;
+      peek.inert = true;
+      if (backdrop) delete backdrop.dataset.open;
+      clearCopyFeedback();
+      container.querySelectorAll("tr.is-peeked").forEach((r) => r.classList.remove("is-peeked"));
+      container.querySelectorAll("[data-peek-open]").forEach((b) => b.setAttribute("aria-expanded", "false"));
+      if (restoreFocus && lastTrigger?.isConnected) {
+        lastTrigger.focus({ preventScroll: true });
+      }
+    };
+
+    const openPeek = (outletId, { trigger = null, moveFocus = false } = {}) => {
+      const targetSheet = sheets.find((s) => s.dataset.peekItem === outletId);
+      if (!targetSheet) return;
+      const wasOpen = Boolean(activeId);
+      activeId = outletId;
+      if (trigger) lastTrigger = trigger;
+
+      sheets.forEach((s) => { s.hidden = s !== targetSheet; });
+      const skuSec = targetSheet.querySelector("[data-sku-section]");
+      if (skuSec) {
+        skuSec.querySelectorAll("[data-sku-filter]").forEach((t) => {
+          const isAll = t.dataset.skuFilter === "all";
+          t.classList.toggle("is-active", isAll);
+          t.setAttribute("aria-pressed", String(isAll));
+        });
+        skuSec.querySelectorAll("[data-sku-group]").forEach((r) => { r.hidden = false; });
+        const emptyEl = skuSec.querySelector("[data-sku-empty]");
+        if (emptyEl) emptyEl.hidden = true;
+      }
+      if (peekBody) peekBody.scrollTop = 0;
+      clearCopyFeedback();
+
+      peek.dataset.open = "true";
+      peek.inert = false;
+      if (backdrop) backdrop.dataset.open = "true";
+      syncPeekMeta();
+
+      if (moveFocus && !wasOpen) {
+        closeBtn?.focus({ preventScroll: true });
+      }
+    };
+
+    const stepRow = (delta) => {
+      if (!activeId) return;
+      const visibleRows = getVisibleRows();
+      if (!visibleRows.length) return;
+      const curIdx = visibleRows.findIndex((r) => r.dataset.peekRow === activeId);
+      const nextIdx = curIdx < 0 ? 0 : curIdx + delta;
+      if (nextIdx < 0 || nextIdx >= visibleRows.length) return;
+      const targetRow = visibleRows[nextIdx];
+      const nextId = targetRow.dataset.peekRow;
+      const nextTrigger = targetRow.querySelector("[data-peek-open]");
+      openPeek(nextId, { trigger: nextTrigger, moveFocus: false });
+      targetRow.scrollIntoView({ block: "nearest", behavior: "instant" });
+    };
+
+    container.querySelectorAll("[data-peek-open]").forEach((btn) => {
+      btn.addEventListener("click", (event) => {
+        const id = btn.dataset.peekOpen;
+        if (activeId === id && peek.dataset.open === "true") {
+          closePeek({ restoreFocus: event.detail === 0 });
+        } else {
+          openPeek(id, { trigger: btn, moveFocus: event.detail === 0 });
         }
       });
-    };
-    sync(false);
-    switcher.addEventListener("change", () => sync(true));
+    });
+
+    closeBtn?.addEventListener("click", () => closePeek({ restoreFocus: true }));
+    backdrop?.addEventListener("click", () => closePeek({ restoreFocus: false }));
+    prevBtn?.addEventListener("click", () => stepRow(-1));
+    nextBtn?.addEventListener("click", () => stepRow(1));
+
+    peek.querySelectorAll("[data-sku-section]").forEach((sec) => {
+      const tabs = [...sec.querySelectorAll("[data-sku-filter]")];
+      const skuRows = [...sec.querySelectorAll("[data-sku-group]")];
+      const emptyEl = sec.querySelector("[data-sku-empty]");
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          const mode = tab.dataset.skuFilter || "all";
+          tabs.forEach((t) => {
+            const active = t === tab;
+            t.classList.toggle("is-active", active);
+            t.setAttribute("aria-pressed", String(active));
+          });
+          let shown = 0;
+          skuRows.forEach((row) => {
+            const visible = mode === "all" || row.dataset.skuGroup === mode;
+            row.hidden = !visible;
+            if (visible) shown += 1;
+          });
+          if (emptyEl) emptyEl.hidden = shown > 0;
+        });
+      });
+    });
+
+    copyBtn?.addEventListener("click", async () => {
+      const activeSheet = sheets.find((s) => s.dataset.peekItem === activeId);
+      const src = activeSheet?.querySelector("[data-peek-copy-source]");
+      const payload = src?.textContent?.trim();
+      if (!payload) return;
+      const announce = (msg, ok) => {
+        if (copyStatus) {
+          copyStatus.textContent = msg;
+          copyStatus.classList.toggle("ok", ok);
+          clearTimeout(statusTimer);
+          statusTimer = setTimeout(() => { copyStatus.textContent = ""; copyStatus.classList.remove("ok"); }, 4000);
+        }
+        if (ok) {
+          copyBtn.dataset.copied = "true";
+          clearTimeout(iconTimer);
+          iconTimer = setTimeout(() => { delete copyBtn.dataset.copied; }, 1800);
+        }
+      };
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(payload);
+        } else {
+          const temp = document.createElement("textarea");
+          temp.value = payload;
+          temp.setAttribute("readonly", "");
+          temp.style.position = "fixed";
+          temp.style.opacity = "0";
+          document.body.appendChild(temp);
+          temp.select();
+          const ok = document.execCommand("copy");
+          temp.remove();
+          if (!ok) throw new Error("copy failed");
+        }
+        announce("Tersalin.", true);
+      } catch {
+        announce("Gagal menyalin.", false);
+      }
+    });
+
+    switcher?.addEventListener("change", () => {
+      if (!activeId) return;
+      const inNewLens = getActivePanel()?.querySelector(`tr[data-peek-row="${CSS.escape(activeId)}"]`);
+      if (inNewLens) {
+        lastTrigger = inNewLens.querySelector("[data-peek-open]") || lastTrigger;
+        syncPeekMeta();
+      } else {
+        closePeek({ restoreFocus: false });
+      }
+    });
+
+    searchInput?.addEventListener("input", () => { if (activeId) syncPeekMeta(); });
+    container.querySelectorAll("[data-weak-reset]").forEach((btn) => {
+      btn.addEventListener("click", () => { if (activeId) requestAnimationFrame(syncPeekMeta); });
+    });
+    container.querySelectorAll("table.sortable").forEach((tbl) => {
+      tbl.addEventListener("sorted", () => { if (activeId) syncPeekMeta(); });
+    });
+
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (!activeId) return;
+        const openDialog = document.querySelector("dialog[open]");
+        if (openDialog) return;
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closePeek({ restoreFocus: true });
+          return;
+        }
+        const tag = document.activeElement?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          stepRow(1);
+        } else if (event.key === "ArrowUp") {
+          event.preventDefault();
+          stepRow(-1);
+        }
+      },
+      { signal }
+    );
+
+    document.addEventListener(
+      "click",
+      (event) => {
+        if (!activeId) return;
+        if (
+          event.target.closest(
+            "#outlet-side-peek, [data-peek-open], .sort-btn, [data-lens-switch], [data-weak-toolbar], [data-weak-reset], .upload-dialog"
+          )
+        ) {
+          return;
+        }
+        closePeek({ restoreFocus: false });
+      },
+      { signal }
+    );
   }
 
   function initPage(root) {
     initCopy(root);
     initSortable(root);
     initOutletTable(root);
+    initQuickTables(root);
     initLensSwitch(root);
+    initSidePeek(root);
     initSegmented(root);
     initViewSwitch(root);
   }
 
-  // ---------------------------------------------------------------- skeletons (matched to clean open-header layout)
+  // ---------------------------------------------------------------- skeletons (matched to quiet hairline layout)
   const sk = (cls) => `<span class="sk ${cls}"></span>`;
-  const skCard = (inner) => `<div class="sk-card">${inner}</div>`;
-  const skHero = () => `<div class="skeleton-head">${sk("sk-title")}${sk("sk-line")}</div>`;
+  const skBlock = (inner) => `<div class="sk-block">${inner}</div>`;
+  const skHero = () => `<div class="skeleton-head">${sk("sk-eyebrow")}${sk("sk-title")}${sk("sk-line")}</div>`;
   const skRows = (n) => Array.from({ length: n }, () => sk("sk-row")).join("");
-  const skGrid = (cols, cards) =>
-    `<div class="sk-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, ${cols}px), 1fr))">${cards}</div>`;
-  const kpiCard = () => skCard(sk("sk-line short") + sk("sk-big") + sk("sk-line short"));
+  const skStatStrip = () =>
+    `<div class="sk-strip">` +
+    Array.from({ length: 4 }, () => `<div class="sk-stat">${sk("sk-line short")}${sk("sk-big")}${sk("sk-line")}</div>`).join("") +
+    `</div>`;
 
   const SKELETONS = {
     "/": () =>
       skHero() +
       `<div class="stack">` +
-      skGrid(240, kpiCard().repeat(4)) +
-      skGrid(420, skCard(sk("sk-line short") + skRows(4)) + skCard(sk("sk-line short") + skRows(5))) +
-      skGrid(420, skCard(sk("sk-line short") + sk("sk-area")) + skCard(sk("sk-line short") + skRows(4))) +
-      skCard(sk("sk-line short") + skRows(6)) +
+      skStatStrip() +
+      `<div class="grid-split">${skBlock(sk("sk-line short") + sk("sk-area"))}${skBlock(sk("sk-line short") + skRows(5))}</div>` +
+      skBlock(sk("sk-line short") + skRows(6)) +
       `</div>`,
     "/wilayah-merek": () =>
       skHero() +
+      `<div class="sk-tabs">${sk("sk-tab")}${sk("sk-tab")}${sk("sk-tab")}${sk("sk-tab")}</div>` +
       `<div class="stack">` +
-      skGrid(240, kpiCard().repeat(4)) +
-      skCard(sk("sk-line short") + sk("sk-row")) +
-      skCard(sk("sk-line short") + skRows(7)) +
+      skBlock(sk("sk-line short") + skRows(8)) +
       `</div>`,
     "/outlet-terlemah": () =>
       skHero() +
       `<div class="stack">` +
-      skCard(sk("sk-line short") + skRows(6)) +
-      skGrid(420, skCard(sk("sk-line short") + sk("sk-area")) + skCard(sk("sk-line short") + skRows(5))) +
-      skGrid(420, skCard(sk("sk-line short") + skRows(5)).repeat(2)) +
+      skBlock(sk("sk-line short") + skRows(5)) +
+      `<div class="method-split">${skBlock(sk("sk-line short") + sk("sk-area"))}${skBlock(sk("sk-line short") + skRows(5))}</div>` +
       `</div>`,
   };
 
@@ -562,7 +968,7 @@
       updateSelectedFile(null);
       if (typeof uploadDialog.showModal === "function") {
         uploadDialog.showModal();
-        if (viaKeyboard) input.focus({ preventScroll: true });
+        if (viaKeyboard && !isCoarsePointer()) input.focus({ preventScroll: true });
         else uploadDialog.focus({ preventScroll: true });
       } else {
         uploadDialog.setAttribute("open", "");

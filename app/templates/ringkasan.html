@@ -4,295 +4,265 @@
 {%- set p = r.period -%}
 {%- set base, current = p.base, p.current -%}
 {%- set t = r.totals -%}
-{%- set best_region, best_brand = r.regions[0], r.brands[0] -%}
+{%- set ext = r.extremes -%}
+{%- set best_region, best_brand, best_sm = ext.best_region, ext.best_brand, ext.best_salesman -%}
 {%- set weak_ids = r.weakest|map(attribute="outlet_id")|list -%}
 {%- set outlet_types = r.outlets|map(attribute="outlet_type")|unique|sort -%}
+{%- set branch_names = r.branches|map(attribute="name")|sort -%}
+{%- set salesman_names = r.named_salesmen|map(attribute="name")|sort -%}
 {%- set n_down = r.outlets|selectattr("change_idr", "lt", 0)|list|length -%}
 {%- set n_up = r.outlets|length - n_down -%}
-{%- set month_max = [t.by_month[base], t.by_month[current], 1]|max -%}
-{%- set regions_by_change = r.regions|rejectattr("change_pct", "none")|sort(attribute="change_pct")|list -%}
-{%- set brands_by_change = r.brands|rejectattr("change_pct", "none")|sort(attribute="change_pct")|list -%}
-{%- set top_region_max = [r.regions[0].total, 1]|max if r.regions else 1 -%}
-{%- set top_brand_max = [r.brands[0].total, 1]|max if r.brands else 1 -%}
 
 {% call m.page_head(
      "Ringkasan penjualan " ~ p.label,
-     "Penjualan bersih setelah diskon (" ~ (t.discount|rp_short) ~ ") dan retur · " ~ t.outlets ~ " outlet · " ~ t.invoices ~ " invoice · " ~ "{:,}".format(t.qty_carton).replace(",", ".") ~ " karton"
+     "Penjualan bersih setelah diskon (" ~ (t.discount|rp_short) ~ ") dan retur di " ~ (r.regions|length) ~ " wilayah, " ~ t.branches ~ " kota cabang, dan " ~ t.salesmen ~ " salesman.",
+     "Laporan Komersial · " ~ p.label
    ) %}
   <div class="head-actions">
     <span class="copy-status" id="copy-status-head" role="status"></span>
     <button type="button" class="btn btn-primary" data-copy="tg" data-status="copy-status-head">
       <svg class="icon-copy" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg>
       <svg class="icon-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
-      <span>Salin ringkasan Telegram</span>
+      <span>Salin briefing Telegram</span>
     </button>
   </div>
 {% endcall %}
 
 <div class="stack">
   <section aria-label="Angka utama">
-    <dl class="kpis">
-      <div class="card kpi">
-        <dt>Total penjualan bersih</dt>
+    <dl class="stat-strip">
+      <div class="stat-col">
+        <dt>Total Penjualan Bersih</dt>
         <dd>
-          <span class="kpi-value" title="{{ t.net|rp }}">{{ t.net|rp_short }}</span>
-          <span class="kpi-line">{{ m.pill(t.change_pct) }} dari {{ base|month_short }} ke {{ current|month_short }}</span>
-          <span class="mini-bars" aria-hidden="true">
-            <span>{{ base|month_short }}</span>
-            {{ m.bar(t.by_month[base] / month_max * 100, aria_hidden=false) }}
-            <span class="num">{{ t.by_month[base]|rp_short }}</span>
-            <span>{{ current|month_short }}</span>
-            {{ m.bar(t.by_month[current] / month_max * 100, t.change_pct, aria_hidden=false) }}
-            <span class="num">{{ t.by_month[current]|rp_short }}</span>
-          </span>
-          <span class="sr-only">{{ base|month_label }} {{ t.by_month[base]|rp_short }}, {{ current|month_label }} {{ t.by_month[current]|rp_short }}.</span>
+          <div class="stat-main">
+            <span class="stat-value" title="{{ t.net|rp }}">{{ t.net|rp_short }}</span>
+            {{ m.delta_text(t.change_pct) }}
+          </div>
+          <span class="stat-note">{{ base|month_short }} {{ t.by_month[base]|rp_short }} &rarr; {{ current|month_short }} {{ t.by_month[current]|rp_short }}</span>
         </dd>
       </div>
 
-      <div class="card kpi">
-        <dt>Wilayah terbaik</dt>
+      <div class="stat-col">
+        <dt>Wilayah &amp; Kota Terbaik</dt>
         <dd>
-          <span class="kpi-value">{{ best_region.name }}</span>
-          <span class="kpi-line"><strong class="num">{{ best_region.total|rp_short }}</strong> · {{ best_region.share_pct|pct(signed=false) }} dari total</span>
-          <span class="kpi-line"><a class="card-link" href="/wilayah-merek?lihat=wilayah">Bandingkan semua wilayah &rarr;</a></span>
+          <div class="stat-main">
+            <span class="stat-value"><a class="plain-link" href="/wilayah-merek?lihat=wilayah">{{ best_region.name }}</a></span>
+            <span class="stat-share">{{ best_region.share_pct|pct(signed=false) }}</span>
+          </div>
+          <span class="stat-note">{%- for br in best_region.branches[:3] %}{{ br.name }} {{ br.total|rp_short }}{% if not loop.last %} · {% endif %}{%- endfor %}</span>
         </dd>
       </div>
 
-      <div class="card kpi">
-        <dt>Merek terbaik</dt>
+      <div class="stat-col">
+        <dt>Merek &amp; Salesman #1</dt>
         <dd>
-          <span class="kpi-value">{{ best_brand.name }}</span>
-          <span class="kpi-line"><strong class="num">{{ best_brand.total|rp_short }}</strong> · {{ best_brand.share_pct|pct(signed=false) }} dari total</span>
-          <span class="kpi-line"><a class="card-link" href="/wilayah-merek?lihat=merek">Bandingkan semua merek &rarr;</a></span>
+          <div class="stat-main">
+            <span class="stat-value"><a class="plain-link" href="/wilayah-merek?lihat=merek">{{ best_brand.name }}</a></span>
+            <span class="stat-share">{{ best_brand.share_pct|pct(signed=false) }}</span>
+          </div>
+          <span class="stat-note">{{ best_brand.total|rp_short }}{% if best_sm %} · Sales #1 <a class="plain-link strong" href="/wilayah-merek?lihat=salesman">{{ best_sm.name }}</a> ({{ best_sm.branch }}){% endif %}</span>
         </dd>
       </div>
 
-      <div class="card kpi">
-        <dt>Outlet perlu perhatian</dt>
+      <div class="stat-col">
+        <dt>Perlu Perhatian</dt>
         <dd>
-          <span class="kpi-value">{{ r.weakest|length }} dari {{ t.outlets }} outlet</span>
-          {% if r.weakest %}<span class="kpi-line">Terburuk: {{ r.weakest[0].name }} {{ m.pill(r.weakest[0].change_pct) }}</span>{% endif %}
-          <span class="kpi-line"><a class="card-link" href="/outlet-terlemah">Lihat analisis &rarr;</a></span>
+          <div class="stat-main">
+            <span class="stat-value"><a class="plain-link" href="/outlet-terlemah">{{ r.weakest|length }} outlet</a></span>
+            {% if r.weakest %}{{ m.delta_text(r.weakest[0].change_pct) }}{% endif %}
+          </div>
+          <span class="stat-note">Dari {{ t.outlets }} outlet{% if r.weakest %} · [{{ r.weakest[0].outlet_id }}] {{ r.weakest[0].salesman }}{% endif %}</span>
         </dd>
       </div>
     </dl>
   </section>
 
   <div class="grid-split">
-    <section class="card" aria-labelledby="peta-kontribusi">
-      <div class="card-head">
+    <section class="clean-section tg-section" aria-labelledby="telegram">
+      <div class="section-bar">
         <div>
-          <h2 id="peta-kontribusi">Kontribusi wilayah &amp; merek teratas</h2>
-          <p class="card-sub">Empat kontributor terbesar pada periode {{ p.label }}</p>
+          <h2 id="telegram">Ringkasan untuk Telegram</h2>
+          <p class="section-sub">Pintu pantau harian Sales Manager — ringkas di capaian wilayah &amp; cabang, tajam di penurunan dan PIC salesman.</p>
         </div>
-        <a class="card-link" href="/wilayah-merek">Tabel lengkap &rarr;</a>
-      </div>
-      <div class="leaders-grid">
-        <div>
-          <h3 class="mini-heading">Wilayah</h3>
-          <ol class="leader-list">
-            {%- for reg in r.regions[:4] %}
-            <li>
-              <div class="leader-row">
-                <span class="leader-name">{{ reg.name }}</span>
-                <span class="leader-metrics"><span class="num strong">{{ reg.total|rp_short }}</span> {{ m.pill(reg.change_pct, digits=0) }}</span>
-              </div>
-              {{ m.bar(reg.total / top_region_max * 100, reg.change_pct) }}
-            </li>
-            {%- endfor %}
-          </ol>
-        </div>
-        <div>
-          <h3 class="mini-heading">Merek</h3>
-          <ol class="leader-list">
-            {%- for br in r.brands[:4] %}
-            <li>
-              <div class="leader-row">
-                <span class="leader-name">{{ br.name }}</span>
-                <span class="leader-metrics"><span class="num strong">{{ br.total|rp_short }}</span> {{ m.pill(br.change_pct, digits=0) }}</span>
-              </div>
-              {{ m.bar(br.total / top_brand_max * 100, br.change_pct) }}
-            </li>
-            {%- endfor %}
-          </ol>
+        <div class="tg-bar-actions">
+          <span class="copy-status" id="copy-status-tg" role="status"></span>
+          <button type="button" class="btn btn-secondary btn-compact" data-copy="tg" data-status="copy-status-tg">
+            <svg class="icon-copy" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg>
+            <svg class="icon-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
+            <span>Salin teks</span>
+          </button>
         </div>
       </div>
+      <label for="tg" class="sr-only">Teks ringkasan siap tempel untuk Telegram (tidak dikirim otomatis)</label>
+      <textarea id="tg" class="field tg-doc" readonly spellcheck="false">{{ r.telegram_summary }}</textarea>
     </section>
 
-    <section class="card" aria-labelledby="sorotan-lemah">
-      <div class="card-head">
+    <section class="clean-section" aria-labelledby="sorotan-lemah">
+      <div class="section-bar">
         <div>
-          <h2 id="sorotan-lemah">Prioritas evaluasi outlet</h2>
-          <p class="card-sub">Penurunan % terdalam (omzet {{ base|month_short }} &ge; <span title="{{ r.weakest_rule.min_base_idr|rp }}">{{ r.weakest_rule.min_base_idr|rp_short }}</span>)</p>
+          <h2 id="sorotan-lemah">{% if r.weakest %}{{ r.weakest|length }} Prioritas Tindak Lanjut{% else %}Prioritas Tindak Lanjut{% endif %}</h2>
+          <p class="section-sub">{% if r.weakest_rule.min_base_idr > 0 %}Kemerosotan terdalam di atas Q1 ({{ r.weakest_rule.min_base_idr|rp_short }}){% else %}Kemerosotan persentase terdalam ({{ base|month_short }} &rarr; {{ current|month_short }}){% endif %}</p>
         </div>
-        <a class="card-link" href="/outlet-terlemah">Rincian &rarr;</a>
+        <a class="card-link" href="/outlet-terlemah">Analisis penuh &nearr;</a>
       </div>
+
       {% if r.weakest %}
       <ol class="watch-list">
         {%- for w in r.weakest %}
         <li>
-          <span class="rank-chip" aria-hidden="true">{{ loop.index }}</span>
           <div class="watch-info">
-            <span class="watch-name">{{ w.name }}</span>
-            <span class="watch-meta">{{ w.branch }} · {{ w.region }} · {{ w.base|rp_short }} &rarr; {{ w.current|rp_short }}</span>
+            <div class="watch-title-row">
+              <span class="watch-name">{{ w.name }}</span>
+              <span class="watch-code">{{ w.outlet_id }}</span>
+            </div>
+            <span class="watch-meta">{{ w.branch }} · {{ w.salesman }}{% if w.salesman_drop_note %} ({{ w.salesman_drop_note }}){% endif %}</span>
           </div>
-          {{ m.pill(w.change_pct) }}
+          <div class="watch-metrics">
+            {{ m.delta_text(w.change_pct) }}
+            <span class="watch-idr num">{{ w.change_idr|rp_short }}</span>
+          </div>
         </li>
         {%- endfor %}
       </ol>
       {% else %}
       <p class="muted">Tidak ada outlet yang mengalami penurunan pada periode ini.</p>
       {% endif %}
+
+      <div class="extremes-strip" aria-label="Rentang penjualan ekstrem">
+        <div class="extreme-row">
+          <span class="extreme-label">Outlet tertinggi</span>
+          <span class="extreme-val"><span class="watch-code">{{ ext.highest_outlet.outlet_id }}</span> {{ ext.highest_outlet.name }} ({{ ext.highest_outlet.branch }}) · <strong class="num">{{ ext.highest_outlet.total|rp_short }}</strong></span>
+        </div>
+        <div class="extreme-row">
+          <span class="extreme-label">Outlet terendah</span>
+          <span class="extreme-val"><span class="watch-code">{{ ext.lowest_outlet.outlet_id }}</span> {{ ext.lowest_outlet.name }} ({{ ext.lowest_outlet.branch }}) · <strong class="num">{{ ext.lowest_outlet.total|rp_short }}</strong></span>
+        </div>
+      </div>
     </section>
   </div>
 
-  <div class="grid-split">
-    <section class="card tg-card" aria-labelledby="telegram">
-      <div class="card-head">
-        <div>
-          <h2 id="telegram">Ringkasan untuk Telegram</h2>
-          <p class="card-sub">Tidak dikirim otomatis</p>
-        </div>
-      </div>
-      <label for="tg">Teks siap tempel</label>
-      <textarea id="tg" class="field" readonly spellcheck="false">{{ r.telegram_summary }}</textarea>
-      <div class="tg-actions">
-        <button type="button" class="btn btn-secondary" data-copy="tg" data-status="copy-status-tg">
-          <svg class="icon-copy" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg>
-          <svg class="icon-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
-          <span>Salin teks</span>
-        </button>
-        <span class="copy-status" id="copy-status-tg" role="status"></span>
-      </div>
-    </section>
-
-    <section class="card" aria-labelledby="sekilas">
-      <div class="card-head">
-        <div>
-          <h2 id="sekilas">Sekilas {{ base|month_short }} &rarr; {{ current|month_short }}</h2>
-          <p class="card-sub">Pergerakan ekstrem wilayah, merek, dan outlet</p>
-        </div>
-      </div>
-      <dl class="facts">
-        {% if regions_by_change %}
-        <div><dt>Wilayah tumbuh tercepat</dt><dd>{{ regions_by_change[-1].name }} {{ m.pill(regions_by_change[-1].change_pct) }}</dd></div>
-        <div><dt>Wilayah turun terdalam</dt><dd>{{ regions_by_change[0].name }} {{ m.pill(regions_by_change[0].change_pct) }}</dd></div>
-        {% endif %}
-        {% if brands_by_change %}
-        <div><dt>Merek tumbuh tercepat</dt><dd>{{ brands_by_change[-1].name }} {{ m.pill(brands_by_change[-1].change_pct) }}</dd></div>
-        <div><dt>Merek turun terdalam</dt><dd>{{ brands_by_change[0].name }} {{ m.pill(brands_by_change[0].change_pct) }}</dd></div>
-        {% endif %}
-        <div>
-          <dt>Outlet naik / turun</dt>
-          <dd><span class="pill pill-pos">{{ n_up }} naik</span> <span class="pill pill-neg">{{ n_down }} turun</span></dd>
-        </div>
-      </dl>
-    </section>
-  </div>
-
-  <section class="card table-section" aria-labelledby="outlet">
-    <div class="card-head">
-      <div>
+  <section class="clean-section table-section" aria-labelledby="outlet">
+    <div class="directory-head">
+      <div class="directory-title-group">
         <h2 id="outlet">Semua outlet</h2>
-        <p class="card-sub">Penjualan {{ base|month_label }} dan {{ current|month_label }} per outlet</p>
+        <fieldset class="segmented" data-status-group>
+          <legend>Status penjualan</legend>
+          <span class="seg-indicator" aria-hidden="true"></span>
+          <label><input type="radio" name="status" value="" checked>Semua <span class="count">{{ r.outlets|length }}</span></label>
+          <label><input type="radio" name="status" value="perhatian">Perhatian <span class="count">{{ r.weakest|length }}</span></label>
+          <label><input type="radio" name="status" value="turun">Turun <span class="count">{{ n_down }}</span></label>
+          <label><input type="radio" name="status" value="naik">Naik <span class="count">{{ n_up }}</span></label>
+        </fieldset>
+      </div>
+
+      <div class="directory-search-row" data-outlet-toolbar hidden>
+        <div class="search">
+          <label for="outlet-search" class="sr-only">Cari toko, ID outlet, atau salesman</label>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
+          <input type="search" id="outlet-search" class="field field-compact" placeholder="Cari toko, ID{% if r.outlets %} (mis. {{ r.outlets[0].outlet_id }}){% endif %}, atau salesman…" enterkeyhint="search" autocomplete="off" spellcheck="false">
+        </div>
       </div>
     </div>
 
-    <div class="toolbar" data-outlet-toolbar hidden>
-      <div class="search">
-        <label for="outlet-search" class="sr-only">Cari outlet</label>
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
-        <input type="search" id="outlet-search" class="field" placeholder="Cari nama outlet, ID, cabang, atau wilayah…" autocomplete="off" spellcheck="false">
-      </div>
+    <div class="filter-strip" data-outlet-filters hidden>
       <div class="filters">
         <label for="f-region" class="sr-only">Filter wilayah</label>
-        <select id="f-region" class="field">
+        <select id="f-region" class="field field-compact">
           <option value="">Semua wilayah</option>
           {%- for l in r.regions|sort(attribute="name") %}
           <option value="{{ l.name }}">{{ l.name }}</option>
           {%- endfor %}
         </select>
+        <label for="f-branch" class="sr-only">Filter cabang</label>
+        <select id="f-branch" class="field field-compact">
+          <option value="">Semua cabang</option>
+          {%- for b in branch_names %}
+          <option value="{{ b }}">{{ b }}</option>
+          {%- endfor %}
+        </select>
+        <label for="f-salesman" class="sr-only">Filter salesman</label>
+        <select id="f-salesman" class="field field-compact">
+          <option value="">Semua salesman</option>
+          {%- for s in salesman_names %}
+          <option value="{{ s }}">{{ s }}</option>
+          {%- endfor %}
+        </select>
         <label for="f-type" class="sr-only">Filter tipe outlet</label>
-        <select id="f-type" class="field">
+        <select id="f-type" class="field field-compact">
           <option value="">Semua tipe</option>
           {%- for ty in outlet_types %}
           <option value="{{ ty }}">{{ ty }}</option>
           {%- endfor %}
         </select>
-        <fieldset class="segmented">
-          <legend>Status penjualan</legend>
-          <span class="seg-indicator" aria-hidden="true"></span>
-          <label><input type="radio" name="status" value="" checked>Semua <span class="count">{{ r.outlets|length }}</span></label>
-          <label><input type="radio" name="status" value="perhatian">Perlu perhatian <span class="count">{{ r.weakest|length }}</span></label>
-          <label><input type="radio" name="status" value="turun">Turun <span class="count">{{ n_down }}</span></label>
-          <label><input type="radio" name="status" value="naik">Naik <span class="count">{{ n_up }}</span></label>
-        </fieldset>
       </div>
-    </div>
 
-    <div class="result-line">
-      <div class="result-info">
-        <span data-outlet-count role="status">{{ r.outlets|length }} outlet</span>
-        <button type="button" class="btn btn-ghost" data-outlet-reset hidden>Hapus semua filter</button>
-      </div>
-      <div class="sort-select" data-outlet-sort hidden>
-        <label for="outlet-sort">Urutkan</label>
-        <select id="outlet-sort" class="field">
-          <option value="0:ascending">Nama A–Z</option>
-          <option value="0:descending">Nama Z–A</option>
-          <option value="2:ascending">Cabang A–Z</option>
-          <option value="2:descending">Cabang Z–A</option>
-          <option value="5:descending">Penjualan {{ current|month_short }} tertinggi</option>
-          <option value="5:ascending">Penjualan {{ current|month_short }} terendah</option>
-          <option value="7:ascending" selected>Perubahan % terburuk</option>
-          <option value="7:descending">Perubahan % terbaik</option>
-          <option value="custom" hidden>Sesuai kolom</option>
-        </select>
+      <div class="result-line">
+        <div class="result-info">
+          <span data-outlet-count role="status">{{ r.outlets|length }} outlet</span>
+          <button type="button" class="btn btn-ghost" data-outlet-reset hidden>Reset filter</button>
+        </div>
+        <div class="sort-select" data-outlet-sort hidden>
+          <label for="outlet-sort">Urutkan</label>
+          <select id="outlet-sort" class="field field-compact">
+            <option value="0:ascending">Nama A–Z</option>
+            <option value="0:descending">Nama Z–A</option>
+            <option value="2:ascending">Cabang A–Z</option>
+            <option value="2:descending">Cabang Z–A</option>
+            <option value="3:ascending">Salesman A–Z</option>
+            <option value="5:descending">Penjualan {{ current|month_short }} tertinggi</option>
+            <option value="5:ascending">Penjualan {{ current|month_short }} terendah</option>
+            <option value="7:ascending" selected>Perubahan % terburuk</option>
+            <option value="7:descending">Perubahan % terbaik</option>
+            <option value="custom" hidden>Sesuai kolom</option>
+          </select>
+        </div>
       </div>
     </div>
 
     <div class="table-wrap tall" role="region" aria-labelledby="outlet" tabindex="0">
       <table class="data sortable" id="outlet-table">
-        <caption class="sr-only">Semua outlet dengan penjualan {{ base|month_label }}, {{ current|month_label }} dan perubahannya</caption>
+        <caption class="sr-only">Semua outlet dengan wilayah, cabang, salesman, penjualan {{ base|month_label }}, {{ current|month_label }} dan perubahannya</caption>
         <thead>
           <tr>
             {{ m.sort_th("Outlet", "text", cls="sticky-col") }}
             {{ m.sort_th("Wilayah", "text") }}
             {{ m.sort_th("Cabang", "text") }}
-            {{ m.sort_th("Tipe", "text") }}
+            {{ m.sort_th("Salesman", "text") }}
             {{ m.sort_th(base|month_short, "num", cls="num") }}
             {{ m.sort_th(current|month_short, "num", cls="num") }}
             {{ m.sort_th("Selisih", "num", cls="num") }}
-            {{ m.sort_th("Perubahan", "num", "ascending", "num") }}
-            <th scope="col"><span class="th-label">Status</span></th>
+            {{ m.sort_th("Tren", "num", "ascending", "num") }}
+            <th scope="col" class="num"><span class="th-label th-end">Status</span></th>
           </tr>
         </thead>
         <tbody>
           {%- for o in r.outlets %}
           {%- set watch = o.outlet_id in weak_ids %}
           {%- set status = ("perhatian turun" if watch else "turun") if o.change_idr < 0 else "naik" %}
-          <tr data-region="{{ o.region }}" data-type="{{ o.outlet_type }}" data-status="{{ status }}"
-              data-search="{{ (o.name ~ ' ' ~ o.outlet_id ~ ' ' ~ o.branch ~ ' ' ~ o.region ~ ' ' ~ o.outlet_type)|lower }}">
-            <th scope="row" class="sticky-col" data-value="{{ o.name }}"><span class="outlet-name">{{ o.name }}</span><span class="outlet-id">{{ o.outlet_id }}</span></th>
+          <tr data-region="{{ o.region }}" data-branch="{{ o.branch }}" data-salesmen="{{ o.salesman_names|join('|') }}" data-type="{{ o.outlet_type }}" data-status="{{ status }}"
+              data-search="{{ (o.name ~ ' ' ~ o.outlet_id ~ ' ' ~ o.branch ~ ' ' ~ o.region ~ ' ' ~ o.outlet_type ~ ' ' ~ o.salesman ~ ' ' ~ o.salesman_drop_note ~ ' ' ~ o.brands_label ~ ' ' ~ status)|lower }}">
+            <th scope="row" class="sticky-col" data-value="{{ o.name }}" title="{{ o.outlet_id }} · {{ o.outlet_type }}">
+              <span class="outlet-name">{{ o.name }}</span>
+            </th>
             <td>{{ o.region }}</td>
             <td>{{ o.branch }}</td>
-            <td><span class="type-tag">{{ o.outlet_type }}</span></td>
+            <td data-value="{{ o.salesman }}">{{ o.salesman }}</td>
             <td class="num" data-value="{{ o.base }}" title="{{ o.base|rp }}">{{ o.base|rp_short }}</td>
-            <td class="num" data-value="{{ o.current }}" title="{{ o.current|rp }}">{{ o.current|rp_short }}</td>
+            <td class="num strong" data-value="{{ o.current }}" title="{{ o.current|rp }}">{{ o.current|rp_short }}</td>
             <td class="num" data-value="{{ o.change_idr }}" title="{{ o.change_idr|rp }}">{{ o.change_idr|rp_short }}</td>
             <td class="num" data-value="{{ o.change_pct if o.change_pct is not none else '' }}">{{ m.pill(o.change_pct) }}</td>
-            <td>
-              {%- if watch %}<a class="pill pill-watch" href="/outlet-terlemah">Perlu perhatian</a>
-              {%- elif o.change_pct is none %}<span class="pill">Outlet baru</span>
-              {%- elif o.change_idr < 0 %}<span class="pill pill-neg">Turun</span>
-              {%- else %}<span class="pill pill-pos">Naik</span>{% endif -%}
+            <td class="num">
+              {%- if watch %}<a class="status-link status-watch" href="/outlet-terlemah">Perlu perhatian</a>
+              {%- elif o.change_pct is none %}<span class="muted">Outlet baru</span>
+              {%- elif o.change_idr < 0 %}<span class="muted">Turun</span>
+              {%- else %}<span class="muted">Naik</span>{% endif -%}
             </td>
           </tr>
           {%- endfor %}
           <tr class="empty-row" hidden>
             <td colspan="9">
               <p><strong>Tidak ada outlet yang cocok</strong><span data-empty-query></span>.</p>
-              <button type="button" class="btn btn-secondary" data-outlet-reset>Hapus semua filter</button>
+              <button type="button" class="btn btn-secondary btn-compact" data-outlet-reset>Reset semua filter</button>
             </td>
           </tr>
         </tbody>
