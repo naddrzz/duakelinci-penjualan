@@ -47,13 +47,15 @@ All three extend `base.html` (collapsible left sidebar `#sidebar` + compact mobi
 | Setting | Where | Default |
 |---|---|---|
 | `DATA_PATH` | env var | `data/dua_kelinci_sample_sales_sep_oct_2026.csv` |
+| `PORT` / `HOST_PORT` | env var (`Dockerfile` / `compose.yaml`) | `8000` |
 | Base materiality floor (`Q1`) | `adaptive_base_floor()` (`app/analysis.py`) | Exact unrounded 1st quartile of active base-month outlets (`Rp 4.927.700` on sample CSV) |
 | `WEAK_OUTLET_COUNT` | `app/config.py` | 5 |
 | `MAX_UPLOAD_BYTES` | `app/config.py` | 10 485 760 (10 MiB) |
 
 ## Deployment (Docker)
 
-`Dockerfile`: `python:3.14-slim`, installs pinned `requirements.txt`, copies `app/` and `data/`, runs as non-root user `appuser` (uid 10001), serves uvicorn on port 8000, healthcheck hits `/healthz`.
+- `Dockerfile`: `python:3.14-slim`, whitelist `.dockerignore` (`~220 KB` build context), installs pinned `requirements.txt`, copies `app/` and `data/` with world-readable permissions (`chmod -R a+rX /app`), switches to non-root user `appuser` (uid `10001`), runs a **build-time asset & dataset verification step** (asserting `wOF2`/PNG/ICO magic bytes on all fonts, OFL licences, logos, favicons, templates, CSS/JS, and startup CSV parsing), serves uvicorn on `${PORT:-8000}` (`--proxy-headers`), and probes `/healthz` via `HEALTHCHECK`.
+- `compose.yaml`: runs the image with `read_only: true`, `tmpfs: ["/tmp"]`, `no-new-privileges:true`, and `restart: unless-stopped` (`docker compose up -d --build`).
 
 Swap the data without rebuilding:
 

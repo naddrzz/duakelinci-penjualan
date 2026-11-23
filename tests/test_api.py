@@ -20,20 +20,36 @@ def test_inter_font_is_self_hosted(client):
     for font in ("InterVariable.woff2", "MontserratVariable.woff2"):
         res = client.get(f"/static/fonts/{font}")
         assert res.status_code == 200
+        assert "font/woff2" in res.headers["content-type"]
         assert res.content[:4] == b"wOF2"
+    for lic in ("LICENSE-Inter.txt", "LICENSE-Montserrat.txt"):
+        lic_res = client.get(f"/static/fonts/{lic}")
+        assert lic_res.status_code == 200
+        assert len(lic_res.content) > 1000
     res = client.get("/static/logo-dk.png")
     assert res.status_code == 200
+    assert "image/png" in res.headers["content-type"]
     assert res.content[:8] == b"\x89PNG\r\n\x1a\n"
     ico = client.get("/favicon.ico")
     assert ico.status_code == 200
+    assert "image/x-icon" in ico.headers["content-type"]
     assert ico.content[:4] == b"\x00\x00\x01\x00"
     for fav in ("favicon.png", "apple-touch-icon.png"):
         f_res = client.get(f"/static/{fav}")
         assert f_res.status_code == 200
+        assert "image/png" in f_res.headers["content-type"]
         assert f_res.content[:8] == b"\x89PNG\r\n\x1a\n"
+    css_res = client.get("/static/app.css")
+    assert css_res.status_code == 200
+    assert "text/css" in css_res.headers["content-type"]
+    js_res = client.get("/static/app.js")
+    assert js_res.status_code == 200
+    assert "javascript" in js_res.headers["content-type"]
     home = client.get("/").text
     assert 'rel="icon"' in home
     assert "favicon.png" in home
+    assert "/static/fonts/InterVariable.woff2" in home
+    assert "/static/fonts/MontserratVariable.woff2" in home
     assert "fonts.googleapis.com" not in home
     assert "https://duakelinci.com" not in home
 

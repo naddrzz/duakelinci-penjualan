@@ -1,0 +1,20 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dua-kelinci-sales:latest
+    ports:
+      - "${HOST_PORT:-8000}:8000"
+    environment:
+      PORT: "8000"
+      # Uncomment along with `volumes` below to mount an external 15-column CSV at startup:
+      # DATA_PATH: "/data/sales.csv"
+    # volumes:
+    #   - ./path/to/sales.csv:/data/sales.csv:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped

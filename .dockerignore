@@ -1,10 +1,14 @@
-**/__pycache__
+# Ignore everything by default so docs, screenshots, tests, and local configs never bloat the build context.
+*
+
+# Explicitly include every runtime file required inside the container (Python, templates, CSS/JS, self-hosted fonts + licences, logos, favicons, and CSV data).
+!requirements.txt
+!app/
+!app/**
+!data/
+!data/*.csv
+
+# Strip Python bytecode caches inside app/.
+**/__pycache__/
 **/*.pyc
-.pytest_cache
-.venv
-.git
-.claude
-tests
-docs
-*.md
-requirements-dev.txt
+**/*.pyo

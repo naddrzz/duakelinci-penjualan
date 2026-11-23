@@ -14,6 +14,14 @@ Docker is the recommended way to run this app. The image uses `python:3.14-slim`
 
 ### 1. Build and start the container
 
+With **Docker Compose** (simplest):
+
+```bash
+docker compose up -d --build
+```
+
+Or with plain **Docker CLI**:
+
 ```bash
 docker build -t dua-kelinci-sales .
 docker run -d \

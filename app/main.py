@@ -1,5 +1,6 @@
 """FastAPI entry point. The default CSV is loaded once at startup; users may also upload a custom CSV."""
 
+import mimetypes
 import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -17,6 +18,18 @@ from . import config
 from .analysis import build_report
 from .data import REQUIRED_COLUMNS, load_sales, load_sales_text
 from .formatting import date_id, month_label, month_short, pct, rp, rp_short
+
+# Guarantee deterministic MIME headers even in minimal slim containers without /etc/mime.types.
+for _mime, _ext in (
+    ("font/woff2", ".woff2"),
+    ("image/x-icon", ".ico"),
+    ("image/png", ".png"),
+    ("image/svg+xml", ".svg"),
+    ("text/css", ".css"),
+    ("text/javascript", ".js"),
+    ("text/plain", ".txt"),
+):
+    mimetypes.add_type(_mime, _ext)
 
 STATIC_DIR = Path(__file__).parent / "static"
 SAFE_PATHS = {"/", "/wilayah-merek", "/outlet-terlemah"}
