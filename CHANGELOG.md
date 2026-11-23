@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.0 — 2026-11-23
+
+- Replaced the horizontal top navbar with a collapsible vertical sidebar (`#sidebar`) featuring hide/unhide controls (`[data-sidebar-toggle]` and `Ctrl+B`/`Cmd+B`), flash-free `localStorage` state persistence on desktop, and a dismissible off-canvas drawer with backdrop + `Escape` support on mobile/tablet (`<= 960px`).
+
 ## 1.5.4 — 2026-11-23
 
 - Outlet terlemah (`/outlet-terlemah`): converted "Hasil dan hitungannya" from multi-card blocks into a sortable full-rupiah table (`#weakest-table`) with inline calculation formulas and remaining-share bars, and moved it to the top of the page above the methodology and 5-step filtering funnel.

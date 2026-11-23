@@ -247,6 +247,82 @@
       `</div>`,
   };
 
+  // ---------------------------------------------------------------- sidebar
+  const rootEl = document.documentElement;
+  const sidebar = document.getElementById("sidebar");
+  const backdrop = document.querySelector("[data-sidebar-backdrop]");
+  const sidebarToggles = [...document.querySelectorAll("[data-sidebar-toggle]")];
+  const insideToggle = document.querySelector("[data-sidebar-inside]");
+  const desktopOpenBtn = document.querySelector("[data-sidebar-desktop-open]");
+  const mobileOpenBtn = document.querySelector("[data-sidebar-mobile-open]");
+  const mqMobile = window.matchMedia("(max-width: 960px)");
+  const modKeyLabel = /Mac|iPhone|iPad/i.test(navigator.platform) ? "Cmd" : "Ctrl";
+
+  function syncSidebar() {
+    if (!sidebar) return;
+    const isMobile = mqMobile.matches;
+    const isOpen = isMobile ? rootEl.dataset.mobileNav === "open" : rootEl.dataset.sidebar !== "collapsed";
+    sidebar.inert = !isOpen;
+    sidebarToggles.forEach((btn) => btn.setAttribute("aria-expanded", String(isOpen)));
+    if (insideToggle) insideToggle.title = `Sembunyikan sidebar (${modKeyLabel}+B)`;
+    if (desktopOpenBtn) desktopOpenBtn.title = `Tampilkan sidebar (${modKeyLabel}+B)`;
+  }
+
+  function closeMobileSidebar({ restoreFocus = false } = {}) {
+    if (rootEl.dataset.mobileNav !== "open") return;
+    delete rootEl.dataset.mobileNav;
+    syncSidebar();
+    if (restoreFocus) mobileOpenBtn?.focus({ preventScroll: true });
+  }
+
+  function toggleSidebar({ moveFocus = true } = {}) {
+    if (!sidebar) return;
+    if (mqMobile.matches) {
+      const opening = rootEl.dataset.mobileNav !== "open";
+      if (opening) rootEl.dataset.mobileNav = "open";
+      else delete rootEl.dataset.mobileNav;
+      syncSidebar();
+      if (moveFocus) (opening ? insideToggle : mobileOpenBtn)?.focus({ preventScroll: true });
+      return;
+    }
+    const collapsing = rootEl.dataset.sidebar !== "collapsed";
+    if (collapsing) {
+      rootEl.dataset.sidebar = "collapsed";
+      try { localStorage.setItem("dk-sidebar", "collapsed"); } catch {}
+    } else {
+      delete rootEl.dataset.sidebar;
+      try { localStorage.setItem("dk-sidebar", "expanded"); } catch {}
+    }
+    syncSidebar();
+    if (moveFocus) (collapsing ? desktopOpenBtn : insideToggle)?.focus({ preventScroll: true });
+  }
+
+  if (sidebar) {
+    syncSidebar();
+    sidebarToggles.forEach((btn) =>
+      btn.addEventListener("click", (event) => toggleSidebar({ moveFocus: event.detail === 0 }))
+    );
+    backdrop?.addEventListener("click", () => closeMobileSidebar({ restoreFocus: true }));
+    mqMobile.addEventListener("change", () => {
+      delete rootEl.dataset.mobileNav;
+      syncSidebar();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && rootEl.dataset.mobileNav === "open") {
+        event.preventDefault();
+        closeMobileSidebar({ restoreFocus: true });
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "b") {
+        const tag = document.activeElement?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable) return;
+        event.preventDefault();
+        toggleSidebar();
+      }
+    });
+    requestAnimationFrame(() => rootEl.classList.add("sidebar-ready"));
+  }
+
   // ---------------------------------------------------------------- router
   const main = document.getElementById("isi");
   const progress = document.querySelector(".progress");
@@ -260,7 +336,7 @@
   }
 
   function updateNav(page) {
-    document.querySelectorAll(".topnav a[data-key]").forEach((link) => {
+    document.querySelectorAll(".sidenav a[data-key]").forEach((link) => {
       if (link.dataset.key === page) link.setAttribute("aria-current", "page");
       else link.removeAttribute("aria-current");
     });
@@ -273,6 +349,7 @@
     const { signal } = controller;
 
     setProgress("start");
+    closeMobileSidebar();
     updateNav(PAGE_KEYS[url.pathname]);
     main.setAttribute("aria-busy", "true");
     main.classList.remove("is-entering");

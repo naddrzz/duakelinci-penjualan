@@ -55,6 +55,8 @@ def test_ringkasan_page(client):
         'id="outlet-search"',
         'aria-sort="ascending"',  # outlet table starts sorted by % change
         'role="region"',  # scrolling tables are keyboard-focusable regions
+        'id="sidebar"',
+        "data-sidebar-toggle",
         'aria-current="page"',
         "Jabodetabek",
         "Kacang Dua Kelinci",

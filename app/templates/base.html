@@ -6,51 +6,118 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>{{ title }} · Penjualan Dua Kelinci {{ r.period.label }}</title>
+  <script>try{if(localStorage.getItem("dk-sidebar")==="collapsed")document.documentElement.dataset.sidebar="collapsed";}catch{}</script>
   <link rel="preload" href="/static/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/static/fonts/MontserratVariable.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ asset_url('app.css') }}">
   <script src="{{ asset_url('app.js') }}" defer></script>
+  <noscript><style>@media (max-width: 960px){.sidebar{position:static;width:100%;height:auto;translate:none;visibility:visible;border-inline-end:0;border-bottom:1px solid var(--line-solid)}.mobile-bar,.sidebar-toggle{display:none}}</style></noscript>
 </head>
 <body>
 <a class="skip" href="#isi">Lewati ke isi</a>
 <div class="progress" aria-hidden="true"><span></span></div>
 
-<header class="topbar">
-  <div class="topbar-inner">
-    <a class="brand" href="/">
-      <img class="brand-logo" src="{{ asset_url('logo-dk.png') }}" width="58" height="36" alt="Dua Kelinci">
-      <span class="brand-divider" aria-hidden="true"></span>
-      <span class="brand-label">Penjualan</span>
-    </a>
+<div class="app-shell">
+  <div class="sidebar-backdrop" data-sidebar-backdrop aria-hidden="true"></div>
 
-    <nav class="topnav" aria-label="Halaman">
+  <aside class="sidebar" id="sidebar" aria-label="Menu samping">
+    <div class="sidebar-head">
+      <a class="brand" href="/">
+        <img class="brand-logo" src="{{ asset_url('logo-dk.png') }}" width="52" height="32" alt="Dua Kelinci">
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-label">Penjualan</span>
+      </a>
+      <button type="button" class="sidebar-toggle" data-sidebar-toggle data-sidebar-inside aria-controls="sidebar" aria-expanded="true" aria-label="Sembunyikan sidebar" title="Sembunyikan sidebar">
+        <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2.25" y="3" width="13.5" height="12" rx="2.25"/>
+          <path d="M7 3v12M11.75 7.25 9.75 9l2 1.75"/>
+        </svg>
+      </button>
+    </div>
+
+    <nav class="sidenav" aria-label="Halaman">
       <ul>
-        {%- for href, key, label in [("/", "ringkasan", "Ringkasan"), ("/wilayah-merek", "wilayah-merek", "Wilayah & merek"), ("/outlet-terlemah", "outlet-terlemah", "Outlet terlemah")] %}
-        <li><a href="{{ href }}" data-key="{{ key }}"{% if page == key %} aria-current="page"{% endif %}>{{ label }}</a></li>
-        {%- endfor %}
+        <li>
+          <a href="/" data-key="ringkasan"{% if page == "ringkasan" %} aria-current="page"{% endif %}>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="2" y="2" width="5" height="5" rx="1.2"/>
+              <rect x="9" y="2" width="5" height="5" rx="1.2"/>
+              <rect x="2" y="9" width="5" height="5" rx="1.2"/>
+              <rect x="9" y="9" width="5" height="5" rx="1.2"/>
+            </svg>
+            <span>Ringkasan</span>
+          </a>
+        </li>
+        <li>
+          <a href="/wilayah-merek" data-key="wilayah-merek"{% if page == "wilayah-merek" %} aria-current="page"{% endif %}>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2.5 13.5h11M4.5 13.5V7.5M8 13.5v-9M11.5 13.5V5.5"/>
+            </svg>
+            <span>Wilayah &amp; merek</span>
+          </a>
+        </li>
+        <li>
+          <a href="/outlet-terlemah" data-key="outlet-terlemah"{% if page == "outlet-terlemah" %} aria-current="page"{% endif %}>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 5l4.2 4.2 2.6-2.6L14 11.8"/>
+              <path d="M10.2 11.8H14V8"/>
+            </svg>
+            <span>Outlet terlemah</span>
+            <span class="nav-badge">{{ r.weakest|length }}</span>
+          </a>
+        </li>
       </ul>
     </nav>
-  </div>
-</header>
 
-<main id="isi" data-page="{{ page }}">
-{% block content %}{% endblock %}
-</main>
-
-<footer class="site-footer">
-  <section class="card data-notes" aria-labelledby="catatan">
-    <div class="notes-head">
-      <h2 id="catatan">Catatan data</h2>
-      <span class="source-chip">{{ r.source }}</span>
+    <div class="sidebar-foot">
+      <span class="sidebar-foot-label">Periode laporan</span>
+      <strong class="sidebar-foot-value">{{ r.period.label }}</strong>
+      <span class="sidebar-foot-meta">{{ r.totals.outlets }} outlet · {{ r.totals.invoices }} invoice</span>
     </div>
-    <ul class="notes-list">
-      <li>{{ q.raw_rows }} baris dibaca, {{ q.duplicates_removed }} baris duplikat dibuang ({{ q.duplicates_net_idr|rp }}), {{ q.clean_rows }} baris dipakai. Sumber: {{ r.source }}.</li>
-      <li>{{ q.regions_normalized }} penulisan wilayah diseragamkan (mis. “Jabar”, “JAWA BARAT” &rarr; Jawa Barat); {{ q.text_trimmed }} baris dirapikan dari spasi berlebih.</li>
-      <li>{{ q.return_rows }} baris retur tetap dihitung ({{ q.returns_net_idr|rp }}); {{ q.blank_salesman }} baris tanpa nama salesman.</li>
-      {% if q.amount_mismatches %}<li><strong>{{ q.amount_mismatches }} baris angkanya tidak konsisten</strong> (gross &ne; qty &times; harga atau net &ne; gross &minus; diskon); net_sales_idr tetap dipakai.</li>{% endif %}
-      {% if q.unknown_regions %}<li><strong>Wilayah tidak dikenal:</strong> {{ q.unknown_regions|join(", ") }}.</li>{% endif %}
-    </ul>
-  </section>
-</footer>
+  </aside>
+
+  <div class="app-body">
+    <button type="button" class="sidebar-toggle sidebar-unhide" data-sidebar-toggle data-sidebar-desktop-open aria-controls="sidebar" aria-expanded="false" aria-label="Tampilkan sidebar" title="Tampilkan sidebar">
+      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="2.25" y="3" width="13.5" height="12" rx="2.25"/>
+        <path d="M7 3v12M10 7.25 12 9l-2 1.75"/>
+      </svg>
+    </button>
+
+    <header class="mobile-bar">
+      <button type="button" class="sidebar-toggle" data-sidebar-toggle data-sidebar-mobile-open aria-controls="sidebar" aria-expanded="false" aria-label="Tampilkan sidebar">
+        <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2.25" y="3" width="13.5" height="12" rx="2.25"/>
+          <path d="M7 3v12"/>
+        </svg>
+      </button>
+      <a class="brand mobile-brand" href="/">
+        <img class="brand-logo" src="{{ asset_url('logo-dk.png') }}" width="46" height="28" alt="Dua Kelinci">
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-label">Penjualan</span>
+      </a>
+    </header>
+
+    <main id="isi" data-page="{{ page }}">
+    {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+      <section class="card data-notes" aria-labelledby="catatan">
+        <div class="notes-head">
+          <h2 id="catatan">Catatan data</h2>
+          <span class="source-chip">{{ r.source }}</span>
+        </div>
+        <ul class="notes-list">
+          <li>{{ q.raw_rows }} baris dibaca, {{ q.duplicates_removed }} baris duplikat dibuang ({{ q.duplicates_net_idr|rp }}), {{ q.clean_rows }} baris dipakai. Sumber: {{ r.source }}.</li>
+          <li>{{ q.regions_normalized }} penulisan wilayah diseragamkan (mis. “Jabar”, “JAWA BARAT” &rarr; Jawa Barat); {{ q.text_trimmed }} baris dirapikan dari spasi berlebih.</li>
+          <li>{{ q.return_rows }} baris retur tetap dihitung ({{ q.returns_net_idr|rp }}); {{ q.blank_salesman }} baris tanpa nama salesman.</li>
+          {% if q.amount_mismatches %}<li><strong>{{ q.amount_mismatches }} baris angkanya tidak konsisten</strong> (gross &ne; qty &times; harga atau net &ne; gross &minus; diskon); net_sales_idr tetap dipakai.</li>{% endif %}
+          {% if q.unknown_regions %}<li><strong>Wilayah tidak dikenal:</strong> {{ q.unknown_regions|join(", ") }}.</li>{% endif %}
+        </ul>
+      </section>
+    </footer>
+  </div>
+</div>
 </body>
 </html>
