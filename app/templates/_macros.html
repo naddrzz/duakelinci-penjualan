@@ -1,0 +1,21 @@
+{#- Shared pieces. Import with: {% import "_macros.html" as m with context %} -#}
+
+{%- macro pill(v, digits=1) -%}
+<span class="pill{% if v is none %}{% elif v < 0 %} pill-neg{% elif v > 0 %} pill-pos{% endif %}">{{ v|pct(digits=digits) }}</span>
+{%- endmacro -%}
+
+{%- macro sort_th(label, kind, sort=none, cls="") -%}
+<th scope="col" class="{{ cls }}" data-sort="{{ kind }}"{% if sort %} aria-sort="{{ sort }}"{% endif %}>
+  <button type="button" class="sort-btn">{{ label }}<svg class="sort-icon" viewBox="0 0 12 16" aria-hidden="true"><path class="up" d="M6 2 10 7H2z"/><path class="down" d="M6 14 2 9h8z"/></svg></button>
+</th>
+{%- endmacro -%}
+
+{%- macro page_head(title, meta) -%}
+<div class="page-head">
+  <div>
+    <h1 tabindex="-1">{{ title }}</h1>
+    <p class="page-meta">{{ meta }}</p>
+  </div>
+  {{ caller() if caller else "" }}
+</div>
+{%- endmacro -%}

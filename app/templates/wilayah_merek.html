@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+{%- set p = r.period -%}
+{%- set base, current = p.base, p.current -%}
+{%- set t = r.totals -%}
+{%- set views = [("wilayah", "Wilayah", "wilayah", r.regions), ("merek", "Merek", "merek", r.brands)] -%}
+
+{{ m.page_head("Wilayah dan merek", "Penjualan bersih " ~ base|month_label ~ " dan " ~ current|month_label ~ ", dibandingkan per wilayah atau per merek.") }}
+
+<form class="view-switch card" method="get" action="/wilayah-merek" data-view-switch>
+  <label for="lihat">Tampilkan tabel</label>
+  <select id="lihat" name="lihat" class="field">
+    {%- for key, label, noun, lines in views %}
+    <option value="{{ key }}"{% if view == key %} selected{% endif %}>Per {{ noun }} ({{ lines|length }} {{ noun }})</option>
+    {%- endfor %}
+  </select>
+  <noscript><button type="submit" class="btn btn-secondary">Tampilkan</button></noscript>
+</form>
+
+{%- for key, label, noun, lines in views %}
+{%- set by_change = lines|rejectattr("change_pct", "none")|sort(attribute="change_pct")|list %}
+<section class="stack view" data-view="{{ key }}" aria-labelledby="h-{{ key }}"{% if view != key %} hidden{% endif %}>
+  <h2 id="h-{{ key }}" class="sr-only">Penjualan per {{ noun }}</h2>
+  <dl class="tiles">
+    <div class="card tile">
+      <dt>{{ label }} terbesar</dt>
+      <dd><span class="tile-value">{{ lines[0].name }}</span><span class="tile-line">{{ lines[0].total|rp_short }} · {{ lines[0].share_pct|pct(signed=false) }} dari total</span></dd>
+    </div>
+    {% if by_change %}
+    <div class="card tile">
+      <dt>Tumbuh tercepat</dt>
+      <dd><span class="tile-value">{{ by_change[-1].name }}</span><span class="tile-line">{{ m.pill(by_change[-1].change_pct) }} {{ by_change[-1].by_month[base]|rp_short }} &rarr; {{ by_change[-1].by_month[current]|rp_short }}</span></dd>
+    </div>
+    <div class="card tile">
+      <dt>Turun terdalam</dt>
+      <dd><span class="tile-value">{{ by_change[0].name }}</span><span class="tile-line">{{ m.pill(by_change[0].change_pct) }} {{ by_change[0].by_month[base]|rp_short }} &rarr; {{ by_change[0].by_month[current]|rp_short }}</span></dd>
+    </div>
+    {% endif %}
+    <div class="card tile">
+      <dt>Total {{ lines|length }} {{ noun }}</dt>
+      <dd><span class="tile-value">{{ t.net|rp_short }}</span><span class="tile-line">{{ m.pill(t.change_pct) }} dari {{ base|month_short }} ke {{ current|month_short }}</span></dd>
+    </div>
+  </dl>
+
+  <div class="card">
+    <div class="card-head">
+      <h3 class="card-title" id="t-{{ key }}">Tabel penjualan per {{ noun }}</h3>
+      <span class="card-sub">Pilih judul kolom untuk mengurutkan.</span>
+    </div>
+    <div class="table-wrap" role="region" aria-labelledby="t-{{ key }}" tabindex="0">
+      <table class="data sortable wide">
+        <caption class="sr-only">Penjualan per {{ noun }}, {{ base|month_label }} dan {{ current|month_label }}</caption>
+        <thead>
+          <tr>
+            {{ m.sort_th(label, "text", cls="sticky-col") }}
+            {{ m.sort_th(base|month_label, "num", cls="num") }}
+            {{ m.sort_th(current|month_label, "num", cls="num") }}
+            {{ m.sort_th("Total", "num", "descending", "num") }}
+            {{ m.sort_th("Selisih", "num", cls="num") }}
+            {{ m.sort_th("Perubahan", "num", cls="num") }}
+            {{ m.sort_th("Porsi dari total", "num", cls="share-col") }}
+          </tr>
+        </thead>
+        <tbody>
+          {%- for l in lines %}
+          {%- set diff = l.by_month[current] - l.by_month[base] %}
+          <tr>
+            <th scope="row" class="sticky-col">{{ l.name }}</th>
+            <td class="num" data-value="{{ l.by_month[base] }}">{{ l.by_month[base]|rp }}</td>
+            <td class="num" data-value="{{ l.by_month[current] }}">{{ l.by_month[current]|rp }}</td>
+            <td class="num strong" data-value="{{ l.total }}">{{ l.total|rp }}</td>
+            <td class="num" data-value="{{ diff }}">{{ diff|rp }}</td>
+            <td class="num" data-value="{{ l.change_pct if l.change_pct is not none else '' }}">{{ m.pill(l.change_pct) }}</td>
+            <td class="share-col" data-value="{{ l.share_pct }}">
+              <span class="share">
+                <span class="bar" aria-hidden="true"><span style="width: {{ '%.1f'|format(l.share_pct) }}%"></span></span>
+                <span class="num">{{ l.share_pct|pct(signed=false) }}</span>
+              </span>
+            </td>
+          </tr>
+          {%- endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row" class="sticky-col">Total</th>
+            <td class="num">{{ t.by_month[base]|rp }}</td>
+            <td class="num">{{ t.by_month[current]|rp }}</td>
+            <td class="num strong">{{ t.net|rp }}</td>
+            <td class="num">{{ (t.by_month[current] - t.by_month[base])|rp }}</td>
+            <td class="num">{{ m.pill(t.change_pct) }}</td>
+            <td class="share-col"><span class="num">100%</span></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</section>
+{%- endfor %}
+{% endblock %}

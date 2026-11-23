@@ -1,0 +1,9 @@
+[project]
+name = "dua-kelinci-sales"
+version = "1.4.1"
+description = "Three-page sales summary (region, brand, weakest outlets, Telegram text) for Dua Kelinci."
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

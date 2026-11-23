@@ -1,0 +1,10 @@
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.venv
+.git
+.claude
+tests
+docs
+*.md
+requirements-dev.txt

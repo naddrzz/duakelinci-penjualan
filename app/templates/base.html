@@ -1,0 +1,47 @@
+<!doctype html>
+{%- set q = r.data_quality -%}
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>{{ title }} · Penjualan Dua Kelinci {{ r.period.label }}</title>
+  <link rel="preload" href="/static/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{ asset_url('app.css') }}">
+  <script src="{{ asset_url('app.js') }}" defer></script>
+</head>
+<body>
+<a class="skip" href="#isi">Lewati ke isi</a>
+<div class="progress" aria-hidden="true"><span></span></div>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">DK</span>Dua Kelinci <small>Penjualan</small></a>
+    <nav class="topnav" aria-label="Halaman">
+      <ul>
+        {%- for href, key, label in [("/", "ringkasan", "Ringkasan"), ("/wilayah-merek", "wilayah-merek", "Wilayah & merek"), ("/outlet-terlemah", "outlet-terlemah", "Outlet terlemah")] %}
+        <li><a href="{{ href }}" data-key="{{ key }}"{% if page == key %} aria-current="page"{% endif %}>{{ label }}</a></li>
+        {%- endfor %}
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="isi" data-page="{{ page }}">
+{% block content %}{% endblock %}
+</main>
+
+<footer>
+  <section class="card" aria-labelledby="catatan">
+    <h2 id="catatan">Catatan data</h2>
+    <ul>
+      <li>{{ q.raw_rows }} baris dibaca, {{ q.duplicates_removed }} baris duplikat dibuang ({{ q.duplicates_net_idr|rp }}), {{ q.clean_rows }} baris dipakai. Sumber: {{ r.source }}.</li>
+      <li>{{ q.regions_normalized }} penulisan wilayah diseragamkan (mis. “Jabar”, “JAWA BARAT” → Jawa Barat); {{ q.text_trimmed }} baris dirapikan dari spasi berlebih.</li>
+      <li>{{ q.return_rows }} baris retur tetap dihitung ({{ q.returns_net_idr|rp }}); {{ q.blank_salesman }} baris tanpa nama salesman.</li>
+      {% if q.amount_mismatches %}<li><strong>{{ q.amount_mismatches }} baris angkanya tidak konsisten</strong> (gross ≠ qty × harga atau net ≠ gross − diskon); net_sales_idr tetap dipakai.</li>{% endif %}
+      {% if q.unknown_regions %}<li><strong>Wilayah tidak dikenal:</strong> {{ q.unknown_regions|join(", ") }}.</li>{% endif %}
+    </ul>
+  </section>
+</footer>
+</body>
+</html>
