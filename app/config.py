@@ -9,10 +9,9 @@ DATA_PATH = Path(
     os.environ.get("DATA_PATH", ROOT / "data" / "dua_kelinci_sample_sales_sep_oct_2026.csv")
 )
 
-# An outlet must have sold at least this much (net, IDR) in the base month to be
-# ranked as "weakest". Filters out tiny outlets whose % change is noise.
-MIN_BASE_SALES_IDR = 5_000_000
-
+# Note: By default at runtime (`min_base_idr=None` in `build_report`), the base-month
+# materiality floor is derived directly as the exact unrounded 1st quartile (Q1 / P25)
+# of active base-month outlets (`Rp 4.927.700` on the bundled sample CSV).
 # How many weakest outlets to flag.
 WEAK_OUTLET_COUNT = 5
 

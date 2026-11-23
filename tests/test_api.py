@@ -92,9 +92,10 @@ def test_outlet_terlemah_page_shows_calculation(client):
         "data-lens-switch",
         "faktur",
         "Aturan yang dipakai",
+        "Rp 4.927.700",
         "Cara menyaring 52 outlet",
         "Keluarkan 1 outlet baru",
-        "Keluarkan 13 outlet kecil",
+        "Keluarkan 12 outlet kecil",
         "−Rp 6.308.000 ÷ Rp 9.181.700 × 100",  # Minimarket Sido Muncul
         "−68,7%",
         "Kenapa tidak memakai cara lain?",

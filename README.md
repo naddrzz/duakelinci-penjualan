@@ -4,7 +4,7 @@ A three-page web app for the sales manager, built from `data/dua_kelinci_sample_
 
 1. **Ringkasan** (`/`): headline numbers, a copy-ready **Telegram summary** (nothing is sent) and a searchable, filterable, sortable table of **all outlets**.
 2. **Wilayah & merek** (`/wilayah-merek`): pick **region** or **brand** from a dropdown to see one wide table of net sales, Sep vs Okt.
-3. **Outlet terlemah** (`/outlet-terlemah`): the **5 weakest outlets** (largest % drop from September to October among outlets that sold at least Rp 5 jt in September), with the step-by-step filtering and each outlet's calculation. Why this rule: [docs/metrics.md](docs/metrics.md).
+3. **Outlet terlemah** (`/outlet-terlemah`): dual-lens FMCG evaluation — the **5 steepest % declines** among comparable outlets at or above the exact 1st-quartile base floor (`Q1 = Rp 4.927.700` on the sample CSV) paired with the **5 largest Rupiah drops** (*Revenue-at-Risk*), step-by-step filtering, and exact calculations. Why this rule: [docs/metrics.md](docs/metrics.md).
 
 ## Run locally
 

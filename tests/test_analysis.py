@@ -41,7 +41,7 @@ def test_brands_ranked_and_complete(report):
 
 
 def test_weakest_outlets(report):
-    assert report["weakest_rule"]["min_base_idr"] == 5_000_000
+    assert report["weakest_rule"]["min_base_idr"] == 4_927_700
     assert report["weakest_rule"]["q1_base_idr"] == 4_927_700
     assert report["weakest_rule"]["adaptive"] is True
     assert [o["outlet_id"] for o in report["weakest"]] == [
@@ -52,21 +52,21 @@ def test_weakest_outlets(report):
     assert report["weakest"][0]["current_invoices"] == 3
 
 
-def test_adaptive_base_floor_scales_across_datasets():
-    small_warungs = [{"base": b} for b in (400_000, 480_000, 520_000, 900_000, 1_100_000, 1_400_000, 1_800_000, 2_200_000)]
-    floor_small, q1_small = adaptive_base_floor(small_warungs)
-    assert 450_000 <= floor_small <= 550_000 and q1_small > 0
+def test_adaptive_base_floor_exact_unrounded():
+    # N = 7 -> exclusive Q1 position = 0.25 * (7 + 1) = 2nd element = 483_250 (exact, not rounded to 500_000!)
+    small_warungs = [{"base": b} for b in (400_000, 483_250, 490_000, 900_000, 1_100_000, 1_400_000, 1_800_000)]
+    assert adaptive_base_floor(small_warungs) == 483_250
 
     tiny_count = [{"base": 1_000_000}, {"base": 2_000_000}]
-    assert adaptive_base_floor(tiny_count)[0] == 0
+    assert adaptive_base_floor(tiny_count) == 0
 
 
 def test_weakest_analysis_funnel(report):
     a = report["weakest_analysis"]
     assert a["total"] == 52
     assert [o["outlet_id"] for o in a["new"]] == ["OUT1047"]
-    assert len(a["small"]) == 13
-    assert a["eligible"] == 38
+    assert len(a["small"]) == 12
+    assert a["eligible"] == 39
     assert a["total"] - len(a["new"]) - len(a["small"]) == a["eligible"]
     assert a["declining"] == 21
     assert [o["outlet_id"] for o in a["lowest_total"]][:2] == ["OUT1003", "OUT1026"]

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.1 — 2026-11-23
+
+- Removed intermediate rounding from `adaptive_base_floor()`: the weakest-outlet materiality threshold now uses the **exact unrounded 1st quartile (`Q1 = Rp 4.927.700` on the 51 active sample outlets; `12` outlets `< Q1` excluded, `39` eligible)** so boundary outlets are never misclassified, and added the explicit `Q1` formula row to `/outlet-terlemah`.
+
 ## 1.8.0 — 2026-11-23
 
 - **Dual-Lens FMCG weakest-outlet model & adaptive Q1 floor** (`app/analysis.py`, `outlet_terlemah.html`):

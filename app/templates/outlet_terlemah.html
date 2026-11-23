@@ -91,7 +91,7 @@
 
     <div class="lens-panel" data-lens-panel="pct">
       {% if r.weakest %}
-      <p class="lens-note"><strong>Lensa kemerosotan laju (%):</strong> menemukan ritel aktif{% if min_base > 0 %} (penjualan {{ base|month_short }} &ge; {{ min_base|rp }}){% endif %} yang ordernya paling anjlok dan berisiko berhenti beli. Ke-{{ r.weakest|length }} outlet ini mencakup <strong>{{ a.weakest_drop_idr|rp_short }}</strong> ({{ a.weakest_drop_share_pct|pct(signed=false) }}) dari total penurunan {{ a.total_drop_idr|rp_short }}.</p>
+      <p class="lens-note"><strong>Lensa kemerosotan laju (%):</strong> menemukan ritel aktif{% if min_base > 0 %} (penjualan {{ base|month_short }} &ge; <strong>{{ min_base|rp }}</strong>, kuartil ke-1 eksak tanpa pembulatan){% endif %} yang ordernya paling anjlok dan berisiko berhenti beli. Ke-{{ r.weakest|length }} outlet ini mencakup <strong>{{ a.weakest_drop_idr|rp_short }}</strong> ({{ a.weakest_drop_share_pct|pct(signed=false) }}) dari total penurunan {{ a.total_drop_idr|rp_short }}.</p>
       {{ lens_table(r.weakest, "weakest-table", "Daftar outlet dengan kemerosotan persentase terdalam beserta hitungannya", "pct") }}
       {% else %}
       <p class="muted">Tidak ada outlet memenuhi ambang yang penjualannya turun dari {{ base|month_short }} ke {{ current|month_short }}.</p>
@@ -111,15 +111,23 @@
       <div class="card-head">
         <h2 id="aturan">Aturan yang dipakai</h2>
       </div>
-      <p>Lensa utama memakai standar ritel <strong>Comparable Store Sales</strong> dengan <strong>ambang kuartil bawah adaptif (Q1)</strong> agar bebas dari bias penyebut kecil (persamaan De Moivre, &sigma;<sub>x&#772;</sub> = &sigma; &divide; &radic;n).</p>
-      <div class="formula" role="group" aria-label="Rumus perubahan">
-        <span class="formula-label">Rumus</span>
-        <span class="formula-body">Perubahan (%) = (Penjualan {{ current|month_short }} − Penjualan {{ base|month_short }}) ÷ Penjualan {{ base|month_short }} × 100</span>
+      <p>Lensa utama memakai standar ritel <strong>Comparable Store Sales</strong> dengan <strong>kuartil bawah eksak (Q1)</strong> tanpa pembulatan antara agar bebas dari bias penyebut kecil (persamaan De Moivre, &sigma;<sub>x&#772;</sub> = &sigma; &divide; &radic;n) sekaligus tidak menggeser batas kelayakan outlet.</p>
+      <div class="formula" role="group" aria-label="Rumus perubahan dan kuartil Q1">
+        <div class="formula-row">
+          <span class="formula-label">Rumus %</span>
+          <span class="formula-body">Perubahan (%) = (Penjualan {{ current|month_short }} − Penjualan {{ base|month_short }}) ÷ Penjualan {{ base|month_short }} × 100</span>
+        </div>
+        {% if min_base > 0 %}
+        <div class="formula-row">
+          <span class="formula-label">Ambang Q1</span>
+          <span class="formula-body">Q1 = Persentil ke-25 (posisi 0,25 × ({{ after_new }} + 1)) dari {{ after_new }} outlet aktif {{ base|month_short }} = {{ min_base|rp }}</span>
+        </div>
+        {% endif %}
       </div>
       <ul class="checks">
         <li>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
-          <span>{% if min_base > 0 %}Ambang dasar adaptif <strong>{{ min_base|rp }}</strong> (diturunkan dari kuartil bawah Q1 = {{ r.weakest_rule.q1_base_idr|rp }} pada {{ after_new }} outlet aktif), otomatis menyesuaikan skala saat mengunggah CSV lain.{% else %}Seluruh {{ after_new }} outlet aktif disertakan (jumlah outlet di bawah 4, tanpa pemangkasan kuartil).{% endif %}</span>
+          <span>{% if min_base > 0 %}Ambang dasar memakai nilai eksak <strong>Q1 = {{ min_base|rp }}</strong> tanpa pembulatan supaya outlet di sekitar batas kuartil tidak terdiskualifikasi atau bocor, dan otomatis beradaptasi pada CSV berskala apa pun.{% else %}Seluruh {{ after_new }} outlet aktif disertakan (jumlah outlet aktif di bawah 4, tanpa pemangkasan kuartil).{% endif %}</span>
         </li>
         <li>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
@@ -154,8 +162,8 @@
         </li>
         <li>
           <div class="funnel-text">
-            <h3>Keluarkan {{ n_small }} outlet kecil</h3>
-            <p>Penjualan {{ base|month_short }} di bawah {{ min_base|rp }}. Angka dasarnya kecil, jadi persennya mudah melonjak.{% if small_example %} Contoh: {{ small_example.name }} {{ small_example.branch }} turun {{ small_example.change_pct|pct(digits=0, signed=false)|replace("−", "") }} padahal selisihnya hanya {{ (0 - small_example.change_idr)|rp }}.{% endif %}</p>
+            <h3>Keluarkan {{ n_small }} outlet kecil (&lt; Q1)</h3>
+            <p>Penjualan {{ base|month_short }} di bawah Q1 eksak ({{ min_base|rp }}). Angka dasarnya kecil, jadi persennya mudah melonjak karena fluktuasi 1–2 karton.{% if small_example %} Contoh: {{ small_example.name }} {{ small_example.branch }} turun {{ small_example.change_pct|pct(digits=0, signed=false)|replace("−", "") }} padahal selisihnya hanya {{ (0 - small_example.change_idr)|rp }}.{% endif %}</p>
             {% if a.small %}
             <details class="why">
               <summary><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg>Lihat {{ n_small }} outlet yang dikeluarkan</summary>

@@ -955,11 +955,19 @@ textarea.field {
 .rule-card .card-head { margin-bottom: 0; }
 .rule-card p { max-width: 65ch; }
 .formula {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; padding: 12px 14px;
+  display: grid; gap: 8px; padding: 12px 14px;
   background: var(--surface-2); border-radius: var(--radius-md);
   border: var(--border-hairline) solid var(--line-solid);
 }
+.formula-row {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+}
+.formula-row + .formula-row {
+  padding-top: 8px;
+  border-top: var(--border-hairline) solid var(--line);
+}
 .formula-label {
+  min-width: 74px;
   font-size: 0.75rem; font-weight: 600;
   letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted);
 }

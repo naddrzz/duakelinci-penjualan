@@ -18,9 +18,9 @@ Seluruh halaman, fitur, state interaktif, kedua lensa evaluasi FMCG, dan detail 
 | 12 | `12-wilayah-merek-per-wilayah.png` | Halaman **Wilayah & Merek (`/wilayah-merek`)** penuh dalam mode **Per wilayah (6 wilayah)** |
 | 13 | `13-dropdown-tampilan-wilayah-merek-terbuka.png` | Detail **Dropdown Tampilan (`#lihat`)** saat terbuka di kanan atas kartu tabel Wilayah & Merek |
 | 14 | `14-wilayah-merek-per-merek.png` | Halaman **Wilayah & Merek (`/wilayah-merek?lihat=merek`)** penuh dalam mode **Per merek (8 merek)** |
-| 15 | `15-outlet-terlemah-lensa-kemerosotan-persen.png` | Halaman **Outlet Terlemah (`/outlet-terlemah`)** penuh: Lensa 1 (**Kemerosotan %** di atas ambang Q1 adaptif + pergerakan faktur & SKU), aturan De Moivre, 5 tahap saringan, dan uji silang *Empirical Bayes* |
+| 15 | `15-outlet-terlemah-lensa-kemerosotan-persen.png` | Halaman **Outlet Terlemah (`/outlet-terlemah`)** penuh: Lensa 1 (**Kemerosotan %** di atas ambang `Q1 = Rp 4.927.700` eksak tanpa pembulatan + pergerakan faktur & SKU), rumus De Moivre & Q1, 5 tahap saringan (`52→51→39→21→5`), dan uji silang *Empirical Bayes* |
 | 16 | `16-outlet-terlemah-lensa-kehilangan-rupiah.png` | Detail **Lensa 2 — Kehilangan Rp (`Revenue-at-Risk`)**: menangkap akun grosir/besar dengan kebocoran omzet terbesar (`68,5%` dari total penurunan jaringan) |
-| 17 | `17-outlet-terlemah-detail-13-outlet-kecil-terbuka.png` | Detail **Accordion `<details>`** `"Lihat 13 outlet yang dikeluarkan"` saat dibuka pada tahap penyaringan ke-3 |
+| 17 | `17-outlet-terlemah-detail-12-outlet-kecil-terbuka.png` | Detail **Accordion `<details>`** `"Lihat 12 outlet yang dikeluarkan"` (`< Q1`) saat dibuka pada tahap penyaringan ke-3 |
 | 18 | `18-modal-unggah-csv-default.png` | Fitur **Modal Unggah CSV (`#upload-dialog`)**: area *drag-and-drop*, daftar 15 kolom wajib, dan tautan **Unduh contoh CSV** |
 | 19 | `19-modal-unggah-csv-validasi-error.png` | Detail **Validasi Error Unggah CSV**: pesan kesalahan spesifik Bahasa Indonesia ketika kolom wajib tidak lengkap |
 | 20 | `20-modal-unggah-csv-berkas-terpilih.png` | Detail **Berkas CSV Terpilih** di dalam dropzone sebelum dianalisis |

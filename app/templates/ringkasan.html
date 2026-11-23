@@ -123,7 +123,7 @@
       <div class="card-head">
         <div>
           <h2 id="sorotan-lemah">Prioritas evaluasi outlet</h2>
-          <p class="card-sub">Penurunan % terdalam (omzet {{ base|month_short }} &ge; {{ r.weakest_rule.min_base_idr|rp_short }})</p>
+          <p class="card-sub">Penurunan % terdalam (omzet {{ base|month_short }} &ge; <span title="{{ r.weakest_rule.min_base_idr|rp }}">{{ r.weakest_rule.min_base_idr|rp_short }}</span>)</p>
         </div>
         <a class="card-link" href="/outlet-terlemah">Rincian &rarr;</a>
       </div>

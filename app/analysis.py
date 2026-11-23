@@ -12,23 +12,18 @@ from .data import CleaningReport, Sale
 from .formatting import month_short, period_label, pct, rp_short
 
 
-def adaptive_base_floor(outlets: list[dict]) -> tuple[int, int]:
-    """Compute a data-driven base-month materiality floor from the 1st quartile (Q1 / P25)
-    of active base-month outlets to suppress small-denominator noise (De Moivre's equation).
+def adaptive_base_floor(outlets: list[dict]) -> int:
+    """Compute the exact unrounded 1st quartile (Q1 / P25, position 0.25 * (N + 1))
+    of active base-month outlets to suppress small-denominator noise (De Moivre's equation)
+    without shifting the boundary via intermediate rounding.
 
-    Returns `(rounded_floor_idr, raw_q1_idr)`. For tiny custom datasets (< 4 active outlets),
-    no quartile trimming is needed so the floor is 0.
+    For tiny custom datasets (< 4 active outlets), quartile trimming does not apply (returns 0).
     """
     active_bases = sorted(o["base"] for o in outlets if o["base"] > 0)
     if len(active_bases) < 4:
-        q1_raw = active_bases[0] if active_bases else 0
-        return 0, q1_raw
-    q1_raw = int(round(statistics.quantiles(active_bases, n=4)[0]))
-    if q1_raw <= 0:
-        return 0, 0
-    digits = len(str(q1_raw))
-    step = (5 if q1_raw >= 3 * (10 ** (digits - 1)) else 1) * (10 ** max(0, digits - 2))
-    return int(round(q1_raw / step) * step), q1_raw
+        return 0
+    q1_exact = int(round(statistics.quantiles(active_bases, n=4, method="exclusive")[0]))
+    return max(0, q1_exact)
 
 
 def change_pct(base: int, current: int) -> float | None:
@@ -238,8 +233,8 @@ def build_report(
         by_month[sale.month] += sale.net_sales_idr
 
     outlets = outlet_table(rows, base, current)
-    auto_floor, q1_raw = adaptive_base_floor(outlets)
-    effective_floor = auto_floor if min_base_idr is None else min_base_idr
+    q1_exact = adaptive_base_floor(outlets)
+    effective_floor = q1_exact if min_base_idr is None else min_base_idr
 
     weak = weakest_outlets(outlets, effective_floor, weak_count)
     analysis = weakest_analysis(outlets, effective_floor, weak_count)
@@ -274,7 +269,7 @@ def build_report(
         "outlets": outlets,
         "weakest_rule": {
             "min_base_idr": effective_floor,
-            "q1_base_idr": q1_raw,
+            "q1_base_idr": q1_exact,
             "adaptive": min_base_idr is None,
             "count": weak_count,
         },

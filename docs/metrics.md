@@ -18,7 +18,7 @@ Full primary-source justification lives in [research-weakest-outlet-and-telegram
 
 **Primary lens (`report.weakest` — Steepest % Erosion on Comparable Stores >= Q1):**
 - Exclude new outlets (`base <= 0`), matching the retail *Comparable / Same-Store Sales* standard.
-- Compute an **adaptive base-month materiality floor** from the **1st quartile (`Q1 / P25`)** of active base-month outlets (`adaptive_base_floor()`), rounded cleanly to 2 significant figures. On the sample CSV (`51` active outlets), raw `Q1 = Rp 4.927.700` → **`Rp 5.000.000`** (`13` noisy bottom-quartile outlets excluded, `38` eligible). On custom uploaded CSVs of smaller or larger scale, the floor scales automatically (and drops to `0` when `< 4` active outlets exist).
+- Compute an **exact, unrounded base-month materiality floor** from the **1st quartile (`Q1 / P25`, position `0.25 × (N + 1)`)** of active base-month outlets (`adaptive_base_floor()`). No intermediate rounding is applied, so outlets near the quartile boundary are never misclassified. On the sample CSV (`51` active outlets), `0.25 × (51 + 1) = 13th` ascending outlet (`OUT1021 Toko Mandiri`), giving **`Q1 = Rp 4.927.700`** (`12` bottom-quartile outlets `< Q1` excluded, `39` outlets `>= Q1` eligible, `21` declining). On custom uploaded CSVs of any currency scale, `Q1` adapts automatically (and returns `0` when `< 4` active outlets exist).
 - Among eligible declining outlets (`change_pct < 0`), take the `WEAK_OUTLET_COUNT` (5) steepest `%` declines (ties break on rupiah drop). Each outlet also tracks operational movement (`base_invoices -> current_invoices` and `base_skus -> current_skus`).
 
 **Complementary lens (`report.weakest_analysis.revenue_at_risk` — Largest Rupiah Contraction / Revenue-at-Risk):**

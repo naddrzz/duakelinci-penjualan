@@ -46,7 +46,7 @@ All three extend `base.html` (collapsible left sidebar `#sidebar` + compact mobi
 | Setting | Where | Default |
 |---|---|---|
 | `DATA_PATH` | env var | `data/dua_kelinci_sample_sales_sep_oct_2026.csv` |
-| `MIN_BASE_SALES_IDR` | `app/config.py` | 5 000 000 |
+| Base materiality floor (`Q1`) | `adaptive_base_floor()` (`app/analysis.py`) | Exact unrounded 1st quartile of active base-month outlets (`Rp 4.927.700` on sample CSV) |
 | `WEAK_OUTLET_COUNT` | `app/config.py` | 5 |
 | `MAX_UPLOAD_BYTES` | `app/config.py` | 10 485 760 (10 MiB) |
 
