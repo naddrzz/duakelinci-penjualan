@@ -184,24 +184,35 @@
 
   // ---------------------------------------------------------------- region/brand switch
   function initViewSwitch(root) {
-    const form = root.querySelector("[data-view-switch]");
-    if (!form) return;
-    const select = form.querySelector("select");
+    const forms = [...root.querySelectorAll("[data-view-switch]")];
+    if (!forms.length) return;
     const views = [...root.querySelectorAll("[data-view]")];
-    form.addEventListener("submit", (event) => event.preventDefault());
-    select.addEventListener("change", () => {
-      views.forEach((view) => {
-        const active = view.dataset.view === select.value;
-        view.hidden = !active;
-        if (active) {
-          view.classList.remove("is-entering");
-          void view.offsetWidth;
-          view.classList.add("is-entering");
+    const selects = forms.map((f) => f.querySelector("select")).filter(Boolean);
+    forms.forEach((form) => form.addEventListener("submit", (event) => event.preventDefault()));
+    selects.forEach((select) => {
+      select.addEventListener("change", () => {
+        const nextKey = select.value;
+        const wasKeyboard = select.matches(":focus-visible");
+        let activeSelect = null;
+        views.forEach((view) => {
+          const active = view.dataset.view === nextKey;
+          view.hidden = !active;
+          if (active) {
+            activeSelect = view.querySelector("[data-view-switch] select");
+            if (activeSelect) activeSelect.value = nextKey;
+            view.classList.remove("is-entering");
+            void view.offsetWidth;
+            view.classList.add("is-entering");
+          }
+        });
+        select.value = nextKey;
+        if (wasKeyboard && activeSelect) {
+          activeSelect.focus({ preventScroll: true });
         }
+        const url = new URL(location.href);
+        url.searchParams.set("lihat", nextKey);
+        history.replaceState(history.state, "", url);
       });
-      const url = new URL(location.href);
-      url.searchParams.set("lihat", select.value);
-      history.replaceState(history.state, "", url);
     });
   }
 

@@ -14,7 +14,7 @@ CSV ──load_sales()──▶ list[Sale] + CleaningReport ──build_report()
 | Route | Template | Content |
 |---|---|---|
 | `GET /` | `ringkasan.html` | Page header, clean white KPIs, top region/brand leaderboards, 5-outlet watch preview, Telegram text with copy buttons, "Sekilas" facts, and the all-outlets table (search, filters, sort) |
-| `GET /wilayah-merek?lihat=wilayah\|merek` | `wilayah_merek.html` | View picker in the page header, four summary tiles, stacked share composition bar, and one wide full-rupiah table (region or brand); unknown `lihat` falls back to `wilayah` |
+| `GET /wilayah-merek?lihat=wilayah\|merek` | `wilayah_merek.html` | Four summary tiles, stacked share composition bar, and one wide full-rupiah table (region or brand) with the view picker (`form.view-switch`) inside the table card header; unknown `lihat` falls back to `wilayah` |
 | `GET /outlet-terlemah` | `outlet_terlemah.html` | Sortable table of the 5 weakest outlets and their exact calculations at the top (`#weakest-table`), followed by side-by-side rule/formula and 5-step filtering funnel, and two alternative definitions for comparison (`report.weakest_analysis`) |
 
 All three extend `base.html` (collapsible left sidebar `#sidebar` + compact mobile bar, `<main id="isi">`, data notes footer) and import shared macros from `_macros.html` (`pill`, `bar`, `sort_th`, `page_head`).

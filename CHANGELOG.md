@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.1 — 2026-11-23
+
+- Wilayah & merek (`/wilayah-merek`): moved `form.view-switch` from the page header into the "Tabel penjualan per wilayah/merek" card header and kept both view selects synchronized without vertical jump on switch.
+
 ## 1.6.0 — 2026-11-23
 
 - Replaced the horizontal top navbar with a collapsible vertical sidebar (`#sidebar`) featuring hide/unhide controls (`[data-sidebar-toggle]` and `Ctrl+B`/`Cmd+B`), flash-free `localStorage` state persistence on desktop, and a dismissible off-canvas drawer with backdrop + `Escape` support on mobile/tablet (`<= 960px`).

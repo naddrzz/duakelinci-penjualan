@@ -6,22 +6,13 @@
 {%- set t = r.totals -%}
 {%- set views = [("wilayah", "Wilayah", "wilayah", r.regions), ("merek", "Merek", "merek", r.brands)] -%}
 
-{% call m.page_head(
+{{ m.page_head(
      "Wilayah dan merek",
      "Penjualan bersih " ~ base|month_label ~ " dan " ~ current|month_label ~ " dalam rupiah penuh, dibandingkan per wilayah atau per merek."
-   ) %}
-  <form class="view-switch" method="get" action="/wilayah-merek" data-view-switch>
-    <label for="lihat">Tampilan</label>
-    <select id="lihat" name="lihat" class="field">
-      {%- for key, label, noun, lines in views %}
-      <option value="{{ key }}"{% if view == key %} selected{% endif %}>Per {{ noun }} ({{ lines|length }} {{ noun }})</option>
-      {%- endfor %}
-    </select>
-    <noscript><button type="submit" class="btn btn-secondary">Tampilkan</button></noscript>
-  </form>
-{% endcall %}
+   ) }}
 
 {%- for key, label, noun, lines in views %}
+{%- set select_id = "lihat" if loop.first else "lihat-" ~ key %}
 {%- set by_change = lines|rejectattr("change_pct", "none")|sort(attribute="change_pct")|list %}
 <section class="stack view" data-view="{{ key }}" aria-labelledby="h-{{ key }}"{% if view != key %} hidden{% endif %}>
   <h2 id="h-{{ key }}" class="sr-only">Penjualan per {{ noun }}</h2>
@@ -87,6 +78,15 @@
         <h3 class="card-title" id="t-{{ key }}">Tabel penjualan per {{ noun }}</h3>
         <p class="card-sub">Pilih judul kolom untuk mengurutkan.</p>
       </div>
+      <form class="view-switch" method="get" action="/wilayah-merek" data-view-switch>
+        <label for="{{ select_id }}">Tampilan</label>
+        <select id="{{ select_id }}" name="lihat" class="field">
+          {%- for v_key, v_label, v_noun, v_lines in views %}
+          <option value="{{ v_key }}"{% if key == v_key %} selected{% endif %}>Per {{ v_noun }} ({{ v_lines|length }} {{ v_noun }})</option>
+          {%- endfor %}
+        </select>
+        <noscript><button type="submit" class="btn btn-secondary">Tampilkan</button></noscript>
+      </form>
     </div>
     <div class="table-wrap" role="region" aria-labelledby="t-{{ key }}" tabindex="0">
       <table class="data sortable wide">

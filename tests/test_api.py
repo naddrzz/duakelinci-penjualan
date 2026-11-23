@@ -75,6 +75,7 @@ def test_wilayah_merek_page_switches_view(client):
     html = page(client, "/wilayah-merek?lihat=merek")
     assert 'data-view="wilayah" aria-labelledby="h-wilayah" hidden' in html
     assert 'data-view="merek" aria-labelledby="h-merek">' in html
+    assert html.index("Tabel penjualan per merek") < html.rindex('class="view-switch"')
     assert "Rp 739.781.900" in html  # Kacang Dua Kelinci total, full rupiah
     html = page(client, "/wilayah-merek?lihat=anything")  # unknown value falls back
     assert 'data-view="wilayah" aria-labelledby="h-wilayah">' in html

@@ -906,14 +906,17 @@ textarea.field {
 .tg-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
 
 /* ---------- Wilayah & Merek View Switch ---------- */
+.card-head:has(.view-switch) {
+  align-items: center;
+  gap: 12px 16px;
+}
 .view-switch {
   display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 10px;
   flex: none; max-width: 100%;
 }
 .view-switch label { font-weight: 500; font-size: 0.875rem; color: var(--muted); white-space: nowrap; }
 .view-switch select.field { width: 252px; flex: none; }
-@media (max-width: 520px) {
-  .page-head-aside { width: 100%; }
+@media (max-width: 560px) {
   .view-switch { display: flex; width: 100%; }
   .view-switch select.field { width: auto; flex: 1 1 auto; min-width: 0; }
 }
@@ -1038,11 +1041,12 @@ details.why[open] summary svg { rotate: 90deg; }
 /* ---------- Page Transitions & Skeletons ---------- */
 main.is-leaving > * { opacity: 0; translate: 0 -6px; transition: opacity 120ms ease-in, translate 120ms ease-in; }
 @keyframes enter { from { opacity: 0; translate: 0 8px; } }
+@keyframes view-fade { from { opacity: 0; } }
 @media (prefers-reduced-motion: no-preference) {
   main.is-entering > * { animation: enter 240ms var(--ease-out) both; }
   main.is-entering > :nth-child(2) { animation-delay: 40ms; }
   main.is-entering > :nth-child(n+3) { animation-delay: 80ms; }
-  .view.is-entering { animation: enter 200ms var(--ease-out) both; }
+  .view.is-entering { animation: view-fade 160ms ease-out both; }
 }
 
 .skeleton-head { display: grid; gap: 10px; padding: 2px 0; }
