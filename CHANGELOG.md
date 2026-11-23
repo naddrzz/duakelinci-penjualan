@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.1 — 2026-11-23
+
+- Clean UI pass: removed the corporate crimson footer blocks (`div.corp-inner` / `div.corp-band` and `div.corp-subband`), switched all KPI cards to pure white surfaces without green fills, removed colored top/side border strips across cards, unboxed the page header, and stripped repeated uppercase eyebrows for a quieter, restrained hierarchy.
+
 ## 1.5.0 — 2026-11-23
 
 - Full frontend redesign aligned with `duakelinci.com/en`: official Dua Kelinci crimson (`#D61A21` family) and heritage leaf green (`#1BAB51` / `#0C8037` family) authored in sRGB-clamped OKLCH tokens with P3 enhancement, pill CTAs, `20px` concentric card surfaces with layered shadows, and a two-tier footer pairing CSV cleaning audit stats with the PT Dua Kelinci corporate band.

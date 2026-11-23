@@ -213,10 +213,10 @@
     initViewSwitch(root);
   }
 
-  // ---------------------------------------------------------------- skeletons (matched to redesigned layouts)
+  // ---------------------------------------------------------------- skeletons (matched to clean open-header layout)
   const sk = (cls) => `<span class="sk ${cls}"></span>`;
   const skCard = (inner) => `<div class="sk-card">${inner}</div>`;
-  const skHero = () => `<div class="skeleton-hero">${sk("sk-eyebrow")}${sk("sk-title")}${sk("sk-line")}</div>`;
+  const skHero = () => `<div class="skeleton-head">${sk("sk-title")}${sk("sk-line")}</div>`;
   const skRows = (n) => Array.from({ length: n }, () => sk("sk-row")).join("");
   const skGrid = (cols, cards) =>
     `<div class="sk-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, ${cols}px), 1fr))">${cards}</div>`;

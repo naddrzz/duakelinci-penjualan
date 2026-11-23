@@ -10,17 +10,16 @@
 </th>
 {%- endmacro -%}
 
-{%- macro page_head(title, meta, eyebrow="PT Dua Kelinci · Laporan Penjualan Bersih") -%}
-<section class="page-hero">
-  <div class="page-hero-main">
-    <p class="eyebrow">{{ eyebrow }}</p>
+{%- macro page_head(title, meta) -%}
+<div class="page-head">
+  <div class="page-head-main">
     <h1 tabindex="-1">{{ title }}</h1>
     <p class="page-meta">{{ meta }}</p>
   </div>
   {%- if caller %}
-  <div class="page-hero-aside">
+  <div class="page-head-aside">
     {{ caller() }}
   </div>
   {%- endif %}
-</section>
+</div>
 {%- endmacro -%}

@@ -21,10 +21,9 @@ def test_inter_font_is_self_hosted(client):
         res = client.get(f"/static/fonts/{font}")
         assert res.status_code == 200
         assert res.content[:4] == b"wOF2"
-    for logo in ("logo-dk.png", "logo-dk-white.png"):
-        res = client.get(f"/static/{logo}")
-        assert res.status_code == 200
-        assert res.content[:8] == b"\x89PNG\r\n\x1a\n"
+    res = client.get("/static/logo-dk.png")
+    assert res.status_code == 200
+    assert res.content[:8] == b"\x89PNG\r\n\x1a\n"
     home = client.get("/").text
     assert "fonts.googleapis.com" not in home
     assert "https://duakelinci.com" not in home
