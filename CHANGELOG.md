@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.2 — 2026-11-23
+
+- Fixed `<select>` width shifting under `appearance: base-select` when switching between options in `form.view-switch` (`/wilayah-merek`) and the outlet filters/sort controls (`/`).
+
 ## 1.5.1 — 2026-11-23
 
 - Clean UI pass: removed the corporate crimson footer blocks (`div.corp-inner` / `div.corp-band` and `div.corp-subband`), switched all KPI cards to pure white surfaces without green fills, removed colored top/side border strips across cards, unboxed the page header, and stripped repeated uppercase eyebrows for a quieter, restrained hierarchy.
