@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.2 — 2026-11-23
+
+- Hardened mathematical edge cases in `app/analysis.py` and templates:
+  - `adaptive_base_floor()` now uses `math.ceil(q1)` instead of `round(q1)` so integer rupiah comparisons (`base >= floor`) remain strictly equivalent to `base >= Q1` even when linear quartile interpolation yields `.25`/`.5`/`.75` fractional rupiah.
+  - Enforced strict disjoint funnel partitioning (`base <= 0` vs `0 < base < min_base_idr` vs `base > 0 and base >= min_base_idr`) so tiny custom CSVs (`< 4` active outlets, `floor = 0`) never double-count new outlets.
+  - Excluded negative return credit notes (`qty_carton <= 0`) from per-outlet sales-order invoice counts (`base_invoices`, `current_invoices`) and clamped CSS bar widths to `[0%, 100%]`.
+
 ## 1.8.1 — 2026-11-23
 
 - Removed intermediate rounding from `adaptive_base_floor()`: the weakest-outlet materiality threshold now uses the **exact unrounded 1st quartile (`Q1 = Rp 4.927.700` on the 51 active sample outlets; `12` outlets `< Q1` excluded, `39` eligible)** so boundary outlets are never misclassified, and added the explicit `Q1` formula row to `/outlet-terlemah`.

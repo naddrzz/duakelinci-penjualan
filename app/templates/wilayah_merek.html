@@ -58,7 +58,7 @@
     </div>
     <div class="stacked-bar" aria-hidden="true">
       {%- for l in lines %}
-      <span class="seg seg-{{ loop.index0 % 8 }}" style="width: {{ '%.2f'|format(l.share_pct) }}%" title="{{ l.name }}: {{ l.share_pct|pct(signed=false) }}"></span>
+      <span class="seg seg-{{ loop.index0 % 8 }}" style="width: {{ '%.2f'|format([0, l.share_pct]|max) }}%" title="{{ l.name }}: {{ l.share_pct|pct(signed=false) }}"></span>
       {%- endfor %}
     </div>
     <ul class="comp-legend">

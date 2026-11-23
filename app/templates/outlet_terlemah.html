@@ -163,7 +163,7 @@
         <li>
           <div class="funnel-text">
             <h3>Keluarkan {{ n_small }} outlet kecil (&lt; Q1)</h3>
-            <p>Penjualan {{ base|month_short }} di bawah Q1 eksak ({{ min_base|rp }}). Angka dasarnya kecil, jadi persennya mudah melonjak karena fluktuasi 1–2 karton.{% if small_example %} Contoh: {{ small_example.name }} {{ small_example.branch }} turun {{ small_example.change_pct|pct(digits=0, signed=false)|replace("−", "") }} padahal selisihnya hanya {{ (0 - small_example.change_idr)|rp }}.{% endif %}</p>
+            <p>{% if min_base > 0 %}Penjualan {{ base|month_short }} di bawah Q1 eksak ({{ min_base|rp }}). Angka dasarnya kecil, jadi persennya mudah melonjak karena fluktuasi 1–2 karton.{% if small_example %} Contoh: {{ small_example.name }} {{ small_example.branch }} turun {{ small_example.change_pct|pct(digits=0, signed=false)|replace("−", "") }} padahal selisihnya hanya {{ (0 - small_example.change_idr)|rp }}.{% endif %}{% else %}Jumlah outlet aktif di bawah 4, sehingga pemangkasan kuartil bawah tidak diberlakukan.{% endif %}</p>
             {% if a.small %}
             <details class="why">
               <summary><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg>Lihat {{ n_small }} outlet yang dikeluarkan</summary>

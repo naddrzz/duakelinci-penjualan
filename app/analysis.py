@@ -6,6 +6,7 @@ Metric definitions live in docs/metrics.md; keep the two in sync.
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import asdict
+import math
 import statistics
 
 from .data import CleaningReport, Sale
@@ -13,17 +14,20 @@ from .formatting import month_short, period_label, pct, rp_short
 
 
 def adaptive_base_floor(outlets: list[dict]) -> int:
-    """Compute the exact unrounded 1st quartile (Q1 / P25, position 0.25 * (N + 1))
-    of active base-month outlets to suppress small-denominator noise (De Moivre's equation)
-    without shifting the boundary via intermediate rounding.
+    """Compute the exact unrounded 1st quartile (Q1 / P25, position 0.25 * (N + 1),
+    equivalent to Excel QUARTILE.EXC) of active base-month outlets to suppress
+    small-denominator noise (De Moivre's equation) without intermediate rounding.
 
-    For tiny custom datasets (< 4 active outlets), quartile trimming does not apply (returns 0).
+    Uses math.ceil(q1) so that for any integer rupiah amount x, `x >= floor` is
+    mathematically identical to `x >= q1` even when linear interpolation yields
+    a .25/.5/.75 fractional rupiah. For tiny custom datasets (< 4 active outlets),
+    quartile trimming does not apply (returns 0).
     """
     active_bases = sorted(o["base"] for o in outlets if o["base"] > 0)
     if len(active_bases) < 4:
         return 0
-    q1_exact = int(round(statistics.quantiles(active_bases, n=4, method="exclusive")[0]))
-    return max(0, q1_exact)
+    q1_float = statistics.quantiles(active_bases, n=4, method="exclusive")[0]
+    return max(0, math.ceil(q1_float))
 
 
 def change_pct(base: int, current: int) -> float | None:
@@ -80,13 +84,13 @@ def outlet_table(rows: list[Sale], base: str, current: str) -> list[dict]:
         b_sku, c_sku = sku_sets.setdefault(oid, (set(), set()))
         if sale.month == base:
             o["base"] += sale.net_sales_idr
-            b_inv.add(sale.invoice_no)
             if sale.qty_carton > 0:
+                b_inv.add(sale.invoice_no)
                 b_sku.add(sale.sku)
         elif sale.month == current:
             o["current"] += sale.net_sales_idr
-            c_inv.add(sale.invoice_no)
             if sale.qty_carton > 0:
+                c_inv.add(sale.invoice_no)
                 c_sku.add(sale.sku)
 
     active_bases = [o["base"] for o in outlets.values() if o["base"] > 0]
@@ -117,11 +121,11 @@ def outlet_table(rows: list[Sale], base: str, current: str) -> list[dict]:
 
 
 def weakest_outlets(outlets: list[dict], min_base_idr: int, count: int) -> list[dict]:
-    """The `count` outlets with the steepest % decline, among outlets that sold at
-    least `min_base_idr` in the base month. Only declining outlets qualify."""
+    """The `count` outlets with the steepest % decline, among active base-month outlets
+    that sold at least `min_base_idr`. Only declining outlets qualify."""
     candidates = [
         o for o in outlets
-        if o["base"] >= min_base_idr and o["change_pct"] is not None and o["change_pct"] < 0
+        if o["base"] > 0 and o["base"] >= min_base_idr and o["change_pct"] is not None and o["change_pct"] < 0
     ]
     candidates.sort(key=lambda o: (o["change_pct"], o["change_idr"]))
     return candidates[:count]
@@ -133,7 +137,7 @@ def weakest_analysis(outlets: list[dict], min_base_idr: int, count: int) -> dict
     and lowest total sales for methodology comparison)."""
     new = [o for o in outlets if o["base"] <= 0]
     small = [o for o in outlets if 0 < o["base"] < min_base_idr]
-    eligible = [o for o in outlets if o["base"] >= min_base_idr]
+    eligible = [o for o in outlets if o["base"] > 0 and o["base"] >= min_base_idr]
     declining = [o for o in eligible if o["change_idr"] < 0]
     all_declining = [o for o in outlets if o["base"] > 0 and o["change_idr"] < 0]
     total_drop_idr = sum(-o["change_idr"] for o in all_declining)

@@ -5,7 +5,8 @@
 {%- endmacro -%}
 
 {%- macro bar(width_pct, change=none, aria_hidden=true) -%}
-<span class="bar{% if change is not none and change > 0 %} bar-pos{% elif change is not none and change < 0 %} bar-neg{% endif %}"{% if aria_hidden %} aria-hidden="true"{% endif %}><span style="width: {{ '%.1f'|format(width_pct) }}%"></span></span>
+{%- set w = 0 if width_pct < 0 else (100 if width_pct > 100 else width_pct) -%}
+<span class="bar{% if change is not none and change > 0 %} bar-pos{% elif change is not none and change < 0 %} bar-neg{% endif %}"{% if aria_hidden %} aria-hidden="true"{% endif %}><span style="width: {{ '%.1f'|format(w) }}%"></span></span>
 {%- endmacro -%}
 
 {%- macro sort_th(label, kind, sort=none, cls="") -%}

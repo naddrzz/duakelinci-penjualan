@@ -3,7 +3,7 @@ If the data file changes, update them together with docs/metrics.md."""
 
 import pytest
 
-from app.analysis import adaptive_base_floor, change_pct, weakest_outlets
+from app.analysis import adaptive_base_floor, change_pct, weakest_analysis, weakest_outlets
 from app.formatting import pct, period_label, rp, rp_short
 
 
@@ -57,8 +57,34 @@ def test_adaptive_base_floor_exact_unrounded():
     small_warungs = [{"base": b} for b in (400_000, 483_250, 490_000, 900_000, 1_100_000, 1_400_000, 1_800_000)]
     assert adaptive_base_floor(small_warungs) == 483_250
 
+    # Fractional Q1 (N = 4 -> pos 1.25 -> 0.75 * 100 + 0.25 * 102 = 100.5):
+    # Integer x >= 100.5 iff x >= 101 (math.ceil, not banker's round to 100).
+    fractional_q1 = [{"base": b} for b in (100, 102, 200, 300)]
+    assert adaptive_base_floor(fractional_q1) == 101
+
     tiny_count = [{"base": 1_000_000}, {"base": 2_000_000}]
     assert adaptive_base_floor(tiny_count) == 0
+
+
+def test_funnel_partition_and_return_invoice_edges(report):
+    # When min_base_idr == 0 (< 4 active outlets) AND a new outlet (base == 0) exists,
+    # new + small + eligible must still partition total without double-counting.
+    tiny_outlets = [
+        {"outlet_id": "NEW1", "base": 0, "current": 5_000_000, "total": 5_000_000, "change_idr": 5_000_000, "change_pct": None, "eb_change_pct": None},
+        {"outlet_id": "ACT1", "base": 4_000_000, "current": 2_000_000, "total": 6_000_000, "change_idr": -2_000_000, "change_pct": -50.0, "eb_change_pct": -30.0},
+        {"outlet_id": "ACT2", "base": 6_000_000, "current": 7_000_000, "total": 13_000_000, "change_idr": 1_000_000, "change_pct": 16.7, "eb_change_pct": 10.0},
+    ]
+    floor = adaptive_base_floor(tiny_outlets)
+    assert floor == 0
+    wa = weakest_analysis(tiny_outlets, floor, 5)
+    assert len(wa["new"]) == 1
+    assert len(wa["small"]) == 0
+    assert wa["eligible"] == 2
+    assert len(wa["new"]) + len(wa["small"]) + wa["eligible"] == wa["total"]
+
+    # Return credit note RTR900001 on OUT1049 must not inflate positive sales invoice count.
+    out1049 = next(o for o in report["outlets"] if o["outlet_id"] == "OUT1049")
+    assert out1049["current_invoices"] == 8
 
 
 def test_weakest_analysis_funnel(report):
