@@ -57,14 +57,14 @@
             <h3>Mulai dari semua outlet</h3>
             <p>Semua outlet yang bertransaksi di {{ base|month_label }} atau {{ current|month_label }}.</p>
           </div>
-          <div class="funnel-count"><span class="bar bar-neutral" aria-hidden="true"><span style="width: 100%"></span></span><strong>{{ a.total }}</strong></div>
+          <div class="funnel-count">{{ m.bar(100) }}<strong>{{ a.total }}</strong></div>
         </li>
         <li>
           <div class="funnel-text">
             <h3>Keluarkan {{ n_new }} outlet baru</h3>
             <p>{% if a.new %}{{ a.new|map(attribute="name")|join(", ") }} belum punya penjualan {{ base|month_short }}, jadi perubahannya tidak bisa dihitung.{% else %}Tidak ada outlet baru.{% endif %}</p>
           </div>
-          <div class="funnel-count"><span class="bar bar-neutral" aria-hidden="true"><span style="width: {{ '%.1f'|format(after_new / a.total * 100) }}%"></span></span><strong>{{ after_new }}</strong></div>
+          <div class="funnel-count">{{ m.bar(after_new / a.total * 100) }}<strong>{{ after_new }}</strong></div>
         </li>
         <li>
           <div class="funnel-text">
@@ -81,21 +81,21 @@
             </details>
             {% endif %}
           </div>
-          <div class="funnel-count"><span class="bar bar-neutral" aria-hidden="true"><span style="width: {{ '%.1f'|format(a.eligible / a.total * 100) }}%"></span></span><strong>{{ a.eligible }}</strong></div>
+          <div class="funnel-count">{{ m.bar(a.eligible / a.total * 100) }}<strong>{{ a.eligible }}</strong></div>
         </li>
         <li>
           <div class="funnel-text">
             <h3>Ambil yang penjualannya turun</h3>
             <p>Dari {{ a.eligible }} outlet yang memenuhi syarat ukuran, {{ a.declining }} turun dan {{ a.eligible - a.declining }} naik atau tetap.</p>
           </div>
-          <div class="funnel-count"><span class="bar bar-neutral" aria-hidden="true"><span style="width: {{ '%.1f'|format(a.declining / a.total * 100) }}%"></span></span><strong>{{ a.declining }}</strong></div>
+          <div class="funnel-count">{{ m.bar(a.declining / a.total * 100) }}<strong>{{ a.declining }}</strong></div>
         </li>
         <li>
           <div class="funnel-text">
             <h3>Urutkan dan ambil {{ r.weakest_rule.count }} teratas</h3>
             <p>Diurutkan dari penurunan persentase terbesar.</p>
           </div>
-          <div class="funnel-count"><span class="bar" aria-hidden="true"><span style="width: {{ '%.1f'|format(r.weakest|length / a.total * 100) }}%"></span></span><strong>{{ r.weakest|length }}</strong></div>
+          <div class="funnel-count">{{ m.bar(r.weakest|length / a.total * 100, -1) }}<strong>{{ r.weakest|length }}</strong></div>
         </li>
       </ol>
     </section>
@@ -125,7 +125,7 @@
         </dl>
         <p class="calc-line"><span class="formula-label">Hitungan</span> {{ o.change_idr|rp }} ÷ {{ o.base|rp }} × 100 = <strong>{{ o.change_pct|pct }}</strong></p>
         <div class="keep">
-          <span class="bar" aria-hidden="true"><span style="width: {{ '%.1f'|format(kept if kept < 100 else 100) }}%"></span></span>
+          {{ m.bar(kept if kept < 100 else 100, o.change_pct) }}
           <span>Penjualan {{ current|month_short }} tinggal <strong>{{ kept|pct(digits=0, signed=false) }}</strong> dari {{ base|month_short }}</span>
         </div>
       </li>

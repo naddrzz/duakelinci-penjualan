@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.3 — 2026-11-23
+
+- Semantic & neutral bar colors across all three pages: `.bar` now defaults to neutral slate (`--bar-neutral`), while bars paired with growth/decline metrics (`m.bar(width_pct, change)`) render green (`--bar-pos`) for positive growth and red (`--bar-neg`) for declines so positive items never appear in red.
+- Updated the 8-segment share composition bar on `/wilayah-merek` (`--seg-0..7`) to a non-alarm sRGB-clamped categorical palette starting with slate-blue instead of crimson.
+
 ## 1.5.2 — 2026-11-23
 
 - Fixed `<select>` width shifting under `appearance: base-select` when switching between options in `form.view-switch` (`/wilayah-merek`) and the outlet filters/sort controls (`/`).

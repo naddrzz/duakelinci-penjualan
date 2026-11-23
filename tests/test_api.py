@@ -62,6 +62,7 @@ def test_ringkasan_page(client):
     ):
         assert expected in html
     assert 'href="/wilayah-merek"' in html and 'href="/outlet-terlemah"' in html
+    assert "bar bar-pos" in html and "bar bar-neg" in html
 
 
 def test_wilayah_merek_page_switches_view(client):

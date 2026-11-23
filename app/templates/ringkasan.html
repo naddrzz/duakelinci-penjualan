@@ -39,10 +39,10 @@
           <span class="kpi-line">{{ m.pill(t.change_pct) }} dari {{ base|month_short }} ke {{ current|month_short }}</span>
           <span class="mini-bars" aria-hidden="true">
             <span>{{ base|month_short }}</span>
-            <span class="bar"><span style="width: {{ '%.1f'|format(t.by_month[base] / month_max * 100) }}%"></span></span>
+            {{ m.bar(t.by_month[base] / month_max * 100, aria_hidden=false) }}
             <span class="num">{{ t.by_month[base]|rp_short }}</span>
             <span>{{ current|month_short }}</span>
-            <span class="bar"><span style="width: {{ '%.1f'|format(t.by_month[current] / month_max * 100) }}%"></span></span>
+            {{ m.bar(t.by_month[current] / month_max * 100, t.change_pct, aria_hidden=false) }}
             <span class="num">{{ t.by_month[current]|rp_short }}</span>
           </span>
           <span class="sr-only">{{ base|month_label }} {{ t.by_month[base]|rp_short }}, {{ current|month_label }} {{ t.by_month[current]|rp_short }}.</span>
@@ -97,7 +97,7 @@
                 <span class="leader-name">{{ reg.name }}</span>
                 <span class="leader-metrics"><span class="num strong">{{ reg.total|rp_short }}</span> {{ m.pill(reg.change_pct, digits=0) }}</span>
               </div>
-              <span class="bar" aria-hidden="true"><span style="width: {{ '%.1f'|format(reg.total / top_region_max * 100) }}%"></span></span>
+              {{ m.bar(reg.total / top_region_max * 100, reg.change_pct) }}
             </li>
             {%- endfor %}
           </ol>
@@ -111,7 +111,7 @@
                 <span class="leader-name">{{ br.name }}</span>
                 <span class="leader-metrics"><span class="num strong">{{ br.total|rp_short }}</span> {{ m.pill(br.change_pct, digits=0) }}</span>
               </div>
-              <span class="bar" aria-hidden="true"><span style="width: {{ '%.1f'|format(br.total / top_brand_max * 100) }}%"></span></span>
+              {{ m.bar(br.total / top_brand_max * 100, br.change_pct) }}
             </li>
             {%- endfor %}
           </ol>

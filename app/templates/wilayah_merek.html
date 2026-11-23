@@ -114,7 +114,7 @@
             <td class="num" data-value="{{ l.change_pct if l.change_pct is not none else '' }}">{{ m.pill(l.change_pct) }}</td>
             <td class="share-col" data-value="{{ l.share_pct }}">
               <span class="share">
-                <span class="bar" aria-hidden="true"><span style="width: {{ '%.1f'|format(l.share_pct) }}%"></span></span>
+                {{ m.bar(l.share_pct, l.change_pct) }}
                 <span class="num">{{ l.share_pct|pct(signed=false) }}</span>
               </span>
             </td>

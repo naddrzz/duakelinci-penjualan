@@ -1,6 +1,7 @@
 /* Dua Kelinci sales dashboard — clean light theme.
    Restrained brand palette in sRGB-clamped OKLCH: crisp white surfaces, neutral ink,
-   and Dua Kelinci crimson reserved strictly for the primary action and key data bars.
+   Dua Kelinci crimson reserved for the primary CTA & active nav underline, and
+   semantic green/red/neutral bars aligned strictly with +/- movement.
    Text contrast >= 4.5:1 (WCAG AA); control borders, bars & scroll thumb >= 3.0:1.
    Self-hosted fonts & logo only: zero external network requests. */
 
@@ -57,19 +58,20 @@
   --neutral-soft: oklch(0.952 0.004 65);
   --neutral-on-soft: oklch(0.32 0.008 45);
 
-  /* Calm 8-step palette for the share composition bar on Wilayah & merek */
-  --seg-0: oklch(0.515 0.198 26.5);
-  --seg-1: oklch(0.46 0.09 245);
-  --seg-2: oklch(0.56 0.115 162);
-  --seg-3: oklch(0.66 0.125 75);
-  --seg-4: oklch(0.55 0.105 305);
-  --seg-5: oklch(0.58 0.095 205);
-  --seg-6: oklch(0.62 0.12 45);
-  --seg-7: oklch(0.62 0.015 55);
+  /* Non-alarm categorical 8-step palette for the share composition bar on Wilayah & merek */
+  --seg-0: oklch(0.47 0.115 252);
+  --seg-1: oklch(0.54 0.086 198);
+  --seg-2: oklch(0.56 0.105 295);
+  --seg-3: oklch(0.59 0.118 72);
+  --seg-4: oklch(0.53 0.095 168);
+  --seg-5: oklch(0.57 0.11 45);
+  --seg-6: oklch(0.52 0.085 228);
+  --seg-7: oklch(0.56 0.016 250);
 
-  /* Bars, neutral focus & understated card elevation */
-  --bar-fill: oklch(0.515 0.198 26.5);
-  --bar-neutral: oklch(0.52 0.012 45);
+  /* Semantic & neutral bars (>= 3.85:1 vs --track, >= 4.66:1 vs --surface) */
+  --bar-neutral: oklch(0.555 0.015 250);
+  --bar-pos: oklch(0.545 0.132 152);
+  --bar-neg: oklch(0.545 0.185 26.5);
   --track: oklch(0.935 0.004 65);
   --focus: oklch(0.24 0.008 45);
   --focus-halo: oklch(0.24 0.008 45 / 0.14);
@@ -562,7 +564,9 @@ a.pill-watch {
   background: var(--track); border-radius: var(--radius-pill); overflow: hidden;
 }
 .leader-list .bar { flex: none; width: 100%; }
-.bar > span { display: block; height: 100%; background: var(--bar-fill); border-radius: var(--radius-pill); }
+.bar > span { display: block; height: 100%; background: var(--bar-neutral); border-radius: var(--radius-pill); }
+.bar-pos > span { background: var(--bar-pos); }
+.bar-neg > span { background: var(--bar-neg); }
 .bar-neutral > span { background: var(--bar-neutral); }
 @media (forced-colors: active) {
   .bar { border: 1px solid CanvasText; }
