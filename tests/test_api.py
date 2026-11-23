@@ -24,7 +24,16 @@ def test_inter_font_is_self_hosted(client):
     res = client.get("/static/logo-dk.png")
     assert res.status_code == 200
     assert res.content[:8] == b"\x89PNG\r\n\x1a\n"
+    ico = client.get("/favicon.ico")
+    assert ico.status_code == 200
+    assert ico.content[:4] == b"\x00\x00\x01\x00"
+    for fav in ("favicon.png", "apple-touch-icon.png"):
+        f_res = client.get(f"/static/{fav}")
+        assert f_res.status_code == 200
+        assert f_res.content[:8] == b"\x89PNG\r\n\x1a\n"
     home = client.get("/").text
+    assert 'rel="icon"' in home
+    assert "favicon.png" in home
     assert "fonts.googleapis.com" not in home
     assert "https://duakelinci.com" not in home
 

@@ -248,6 +248,11 @@ def reset_report(request: Request) -> Response:
     return RedirectResponse(url=_safe_referer(request), status_code=303)
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon() -> FileResponse:
+    return FileResponse(STATIC_DIR / "favicon.ico", media_type="image/x-icon")
+
+
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
     return {"status": "ok"}

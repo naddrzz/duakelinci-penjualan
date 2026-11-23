@@ -27,7 +27,7 @@ All three extend `base.html` (collapsible left sidebar `#sidebar` + compact mobi
   - **Router**: intercepts plain left-clicks on same-origin links to the three routes. It marks the nav item, shows a progress bar, fades the old content out (120 ms), shows a page-specific skeleton for at least `MIN_SKELETON_MS` (350 ms, so it never flashes), fetches the target page, swaps `<main>`, updates `document.title`, pushes history, then plays a one-off entrance animation. Focus moves to the new `<h1>`, or the page scrolls to the URL hash. Back/forward use the same path. Any fetch error falls back to a normal full page load.
   - Reduced motion: only opacity changes; the skeleton shimmer and progress animation are off.
 - `asset_url()` (template global in `main.py`) appends the file's modification time to `app.css`/`app.js` URLs so browsers never run a stale copy.
-- `MontserratVariable.woff2` and `InterVariable.woff2` (with SIL OFL licences) sit in `app/static/fonts/`, alongside the self-hosted brand logo (`logo-dk.png`). The app makes no external requests, so the container works offline.
+- `MontserratVariable.woff2` and `InterVariable.woff2` (with SIL OFL licences) sit in `app/static/fonts/`, alongside the self-hosted brand logo (`logo-dk.png`) and square favicons (`favicon.ico`, `favicon.png`, `apple-touch-icon.png`). The app makes no external requests, so the container works offline.
 
 ## Endpoints
 
@@ -38,8 +38,9 @@ All three extend `base.html` (collapsible left sidebar `#sidebar` + compact mobi
 | `POST /api/upload` | Accepts a custom `.csv` (`multipart/form-data` field `file` or `text/csv`, max 10 MiB), cleans & validates the 15 columns + >= 2 months in memory, and swaps `app.state.report` |
 | `POST /api/report/reset` | Restores `app.state.report` back to `app.state.default_report` |
 | `GET /api/sample-csv` | Downloads the bundled sample CSV (`data/dua_kelinci_sample_sales_sep_oct_2026.csv`) as a template |
+| `GET /favicon.ico` | Multi-resolution (`16×16`, `32×32`, `48×48`) favicon generated from `logo-dk.png` |
 | `GET /healthz` | `{"status": "ok"}`; used by the Docker `HEALTHCHECK` |
-| `GET /static/...` | `app.css`, `app.js`, self-hosted fonts & logo |
+| `GET /static/...` | `app.css`, `app.js`, self-hosted fonts, logo & favicons |
 
 ## Configuration
 

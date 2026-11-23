@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.3 — 2026-11-23
+
+- Added self-hosted web favicons derived proportionally from `logo-dk.png` without aspect-ratio distortion (`favicon.ico` at `16×16`/`32×32`/`48×48`, `favicon.png` at `64×64`, and `apple-touch-icon.png` at `180×180`), wired into `base.html` and `GET /favicon.ico`.
+
 ## 1.8.2 — 2026-11-23
 
 - Hardened mathematical edge cases in `app/analysis.py` and templates:
