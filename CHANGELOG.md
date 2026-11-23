@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.0.0 — 2026-11-23
+
+- **Quiet architectural UI redesign & structured Tabbed Data Table** (approved from Wonder draft in workspace `insan-khamil` + follow-up table refinement):
+  - Replaced boxed KPI cards, the multicolored stacked composition bar, and duplicate Ringkasan leaderboards with open **Stat Strips** (`dl.stat-strip` on `/` and `/outlet-terlemah`), generous `44px` vertical rhythm on a pure-white canvas (`#FFFFFF`) beside a warm-stone sidebar (`#FAFAFA`), and a clean document-sheet treatment for the Telegram briefing.
+  - Renamed the `/wilayah-merek` navigation item to **Rincian penjualan** (covering all 4 dimensions) and converted the page into a focused **Tabbed Data Table** (`div.tabbed-sheet` + `Wilayah 6`, `Cabang Kota 13`, `Merek 8`, `Salesman 26` tabs) with auto-numbered `#` rows, `Selisih` & `Total` full-rupiah columns, inline share bars, and a `Total Keseluruhan` footer.
+  - Added an **Aksi → `Detail`** column and **Notion-style Right Side Peek** (`#outlet-side-peek`) on `/outlet-terlemah` (researched on Mobbin & approved in Wonder): non-blocking right drawer with active-row highlight, `»` close (`Escape`), `↑`/`↓` row stepping, one-click `Salin detail`, enriched Notion properties (branch, region, salesmen, invoice frequency & drop size, carton volume, SKU count, last order date/salesman, brands), interactive **Status & Pergerakan SKU** (`Semua / Berhenti / Jalan` per SKU with carton movement & salesman), per-salesman drop attribution cards, and exact Q1 calculation ledger.
+  - Styled all data tables across `/`, `/wilayah-merek`, and `/outlet-terlemah` as **clean structured tables** (`1px` rounded border frame, `#FAFAFA` sticky header & footer, subtle column hairlines, `tabular-nums` alignment, no horizontal thin scrollbar, and compact single-line cells so all columns fit cleanly on laptop viewports).
+  - **Mobile-native polish & horizontal table sync**: synchronized `thead` and `tbody`/`tfoot` horizontal scrolling on `.numbered-table` and narrow viewports (`<= 720px`), converted `/wilayah-merek` dimension tabs into a single-row edge-to-edge swipeable strip, upgraded `/` Stat Strip and outlet filters to balanced `2×2` phone grids (`1-col` below `360px`), refined `#outlet-side-peek` mobile property/SKU/ledger rows and `44×44px` non-overlapping touch targets, converted `#upload-dialog` into a bottom sheet on phones, and added `viewport-fit=cover`, `interactive-widget=resizes-content`, `theme-color`, `enterkeyhint="search"`, safe-area insets, and coarse-pointer autofocus gating.
+
+## 1.9.0 — 2026-11-23
+
+- **Chat-First Telegram briefing (`telegram_summary()` & `ringkasan.html`)**:
+  - Redesigned around Sales Manager daily mobile workflow (concise macro positives up top, deep operational diagnostics on declines) and elevated the Telegram card to the primary fold on `/`.
+  - Added best **Region (branch group area)** with its **Branch (city)** breakdown (`Jabodetabek`: `Tangerang`, `Jakarta Barat`, `Bekasi`) plus top city branch overall, best **Brand**, top **Salesman** (`Citra`), **Highest vs Lowest Sales** with `[outlet_id]` and salesman (`[OUT1007]` vs `[OUT1003]`, lowest region/branch/brand/salesman), and per-outlet **Salesman + drop-driver attribution** on all declining retail and key wholesaler accounts.
+- **Salesman & Branch visibility across all three pages**:
+  - `/` (`ringkasan.html`): added Region + Branch breakdown in the top KPI, Salesman KPI & 4-pillar leaderboards (`Wilayah`, `Cabang`, `Merek`, `Salesman`), Highest/Lowest extremes card, and a `Salesman` column + `#f-branch` & `#f-salesman` filters in `#outlet-table`.
+  - `/wilayah-merek` (`wilayah_merek.html`): added `Per cabang (13 cabang)` and `Per salesman (26 salesman)` views alongside `Per wilayah` and `Per merek`, plus cross-dimensional branch and top-salesman columns in every table.
+  - `/outlet-terlemah` (`outlet_terlemah.html`): added `Salesman & sumber drop` column to both `%` erosion and `Rp` *Revenue-at-Risk* tables (pinpointing which salesman's orders contracted at shared outlets), an interactive search bar (`#weak-search`), and `[outlet_id]` + salesman labels across funnel and comparison lists.
+  - Universal multi-token table search (`matchesQuery` in `app.js`): every data table across `/`, `/wilayah-merek` (all 4 views), and `/outlet-terlemah` now includes a live search bar supporting store name, outlet ID (`OUT10xx`), salesman name, city branch, region, store type, brand, and status.
+
 ## 1.8.3 — 2026-11-23
 
 - Added self-hosted web favicons derived proportionally from `logo-dk.png` without aspect-ratio distortion (`favicon.ico` at `16×16`/`32×32`/`48×48`, `favicon.png` at `64×64`, and `apple-touch-icon.png` at `180×180`), wired into `base.html` and `GET /favicon.ico`.

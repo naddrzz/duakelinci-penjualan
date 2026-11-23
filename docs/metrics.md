@@ -8,9 +8,13 @@ Implemented in `app/analysis.py`; thresholds in `app/config.py`; tested in `test
 - **Period**: every month present in the data. **Base** and **current** are the last two months (today: Sep 2026 → Okt 2026). With fewer than two months the app refuses to start.
 - **Change %** = `(current − base) / base × 100`; undefined (shown as "baru") when base ≤ 0.
 
-## 1. Sales per region and brand
+## 1. Sales per region, branch, brand, and salesman
 
-For each region and each brand: sales per month, total, change %, and share of grand total. Sorted by total, highest first. The first row is the "best" region/brand used in the Telegram text.
+For each **region** (group area), **city branch**, **brand**, and **salesman**: sales per month, total, rupiah diff, change %, and share of grand total, sorted by total (highest first):
+- **Region (`report.regions`)**: includes its child city branches (`branches`, `top_branch`, `branches_label`), outlet count, and top salesman. Best region on sample data: `Jabodetabek` (`Rp 495.827.800`, `28,7%`), comprising `Tangerang` (`Rp 249.019.600`), `Jakarta Barat` (`Rp 168.834.700`), and `Bekasi` (`Rp 77.973.500`).
+- **Branch (`report.branches`)**: 13 city branches with parent `region`, outlet count, and `salesmen_label`. Highest: `Tangerang` (`Rp 249.019.600`, `14,4%`); lowest: `Banjarmasin` (`Rp 31.969.000`, `1,9%`).
+- **Brand (`report.brands`)**: 8 brands with strongest region, branch, and salesman. Highest: `Kacang Dua Kelinci` (`Rp 739.781.900`, `42,9%`); lowest: `Roni` (`Rp 34.399.200`, `2,0%`).
+- **Salesman (`report.salesmen` & `report.named_salesmen`)**: 26 named salesmen (plus transparent `Belum tercatat` row for the 5 blank-salesman lines so table totals reconcile to `100%`). Highest named salesman: `Citra` (`Tangerang, Jabodetabek`, `Rp 136.587.300`, `+17,1%`); lowest named salesman: `Bayu` (`Banjarmasin, Kalimantan`, `Rp 13.084.600`, `+41,5%`); steepest contraction: `Teguh` (`Medan, Sumatera`, `−44,2%` / `−Rp 27.484.800`).
 
 ## 2. Weakest outlets (Dual-Lens FMCG + Adaptive Q1 Floor)
 
@@ -35,9 +39,11 @@ Full primary-source justification lives in [research-weakest-outlet-and-telegram
 | 4 | OUT1048 Toko Mekar | Banjarmasin | 5→3 inv · 8→3 SKU | 5.143.700 | 2.473.900 | −51,9 % |
 | 5 | OUT1001 Toko Sinar Abadi | Jakarta Barat | 6→3 inv · 9→7 SKU | 6.929.900 | 3.579.000 | −48,4 % |
 
-## 3. Telegram summary
+## 3. Telegram summary (Chat-First Asymmetric Briefing)
 
-Scannable multi-line message in Bahasa Indonesia (BLUF headline + bulleted KPIs + numbered `%` watch list + key-account Rupiah loss callout when distinct), generated from the report (never hard-coded). Built by `telegram_summary()`. The app only displays it with a copy button; it never sends anything.
+Designed as the primary daily/period pulse read on mobile before a manager opens the web app (`telegram_summary()`):
+- **Concise on positive & macro standing**: period total, `Sep → Okt` movement, best **Region** (`Jabodetabek`) with its **city branch breakdown** (`Tangerang`, `Jakarta Barat`, `Bekasi`) and top **Branch** overall, best **Brand**, best **Salesman**, plus **Highest vs Lowest Sales** (`[OUT1007] Grosir Harapan Baru` `Rp 190,5 jt` vs `[OUT1003] Toko Sinar Abadi` `Rp 564 rb`, lowest region/branch, lowest brand/salesman).
+- **Deep & actionable on declines**: every declining outlet includes `[outlet_id]`, city branch & region, `Sep → Okt` rupiah & `%`, invoice movement (`base→current faktur`), assigned **Salesmen**, and **which salesman drove the drop** (`salesman_drop_note`), followed by key-account rupiah drops and steepest-contracting salesman.
 
 Sample output:
 
@@ -47,18 +53,21 @@ Ringkasan Penjualan Dua Kelinci — Sep–Okt 2026
 Total penjualan bersih: Rp 1,73 miliar (naik 3,6%)
 • Perbandingan: Sep Rp 847,5 jt → Okt Rp 878,4 jt
 • Wilayah terbaik: Jabodetabek — Rp 495,8 jt (28,7% dari total)
+  ↳ Cabang kota: Tangerang Rp 249,0 jt · Jakarta Barat Rp 168,8 jt · Bekasi Rp 78,0 jt
+• Cabang tertinggi: Tangerang (Jabodetabek) — Rp 249,0 jt (14,4%)
 • Merek terbaik: Kacang Dua Kelinci — Rp 739,8 jt (42,9% dari total)
+• Salesman tertinggi: Citra (Tangerang, Jabodetabek) — Rp 136,6 jt · +17%
 
-Outlet perlu perhatian — penurunan % terdalam (Sep → Okt):
-1. Minimarket Sido Muncul, Palembang (−69% · −Rp 6,3 jt)
-2. Toko Bintang, Semarang (−63% · −Rp 5,5 jt)
-3. Toko Anugerah, Palembang (−53% · −Rp 6,6 jt)
-4. Toko Mekar, Banjarmasin (−52% · −Rp 2,7 jt)
-5. Toko Sinar Abadi, Jakarta Barat (−48% · −Rp 3,4 jt)
+Penjualan tertinggi & terendah:
+• Outlet tertinggi: [OUT1007] Grosir Harapan Baru, Tangerang (Jabodetabek) — Rp 190,5 jt (Sales: Citra, Dedi)
+• Outlet terendah: [OUT1003] Toko Sinar Abadi, Jakarta Barat (Jabodetabek) — Rp 564 rb (Sales: Andi, Budi)
+• Wilayah & cabang terendah: Kalimantan (Rp 144,2 jt) · Banjarmasin (Rp 32,0 jt)
+• Merek & salesman terendah: Roni (Rp 34,4 jt) · Bayu, Banjarmasin (Rp 13,1 jt)
 
-Penurunan rupiah terbesar (akun besar):
-• Grosir Sentosa, Bandung (−Rp 31,6 jt · −33%)
-• Grosir Sumber Alam, Solo (−Rp 24,3 jt · −31%)
+Evaluasi penurunan — 5 outlet melemah terdalam (Sep → Okt):
+1. [OUT1043] Minimarket Sido Muncul, Palembang (Sumatera) — Rp 9,2 jt → Rp 2,9 jt (−69% · −Rp 6,3 jt)
+   5→3 faktur · Sales: Zaki, Yudi — drop utama Zaki −Rp 6,8 jt (−96%)
+...
 ```
 
 ## Reference numbers (sample file)

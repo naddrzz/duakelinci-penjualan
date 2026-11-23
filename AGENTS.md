@@ -1,47 +1,81 @@
 # AGENTS.md
 
-Three-page FastAPI web app that summarises Dua Kelinci sales from a CSV for a sales manager: net sales per region and brand, the 5 weakest outlets, and a copy-ready Telegram paragraph. The UI and Telegram text are Bahasa Indonesia; code and docs are English.
+## Project snapshot
 
-## Commands
+Single-package, three-page FastAPI + Jinja2 web app that turns a 15-column sales CSV into an executive dashboard for PT Dua Kelinci's commercial team:
+1. **Ringkasan** (`/`): architectural KPI stat strip, primary-fold Chat-First Telegram briefing, 5-outlet priority watch list, extremes, and a searchable/filterable directory of all outlets.
+2. **Rincian penjualan** (`/wilayah-merek?lihat=wilayah|cabang|merek|salesman`): numbered full-rupiah tabbed data tables across region, city branch, brand, and salesman.
+3. **Outlet terlemah** (`/outlet-terlemah`): dual-lens decline evaluation (`Kemerosotan %` above exact unrounded `Q1` floor vs `Kehilangan Rp` *Revenue-at-Risk*), a Notion-style Right Side Peek (`#outlet-side-peek`) with SKU-level `Semua / Berhenti / Jalan` diagnostics and salesman drop attribution, plus the 5-step filtering funnel.
+
+UI copy and Telegram text are **Bahasa Indonesia**; code, identifiers, commits, and docs are **English**. All fonts, logos, and favicons are self-hosted so the container runs 100% offline.
+
+## Setup, test & deploy commands
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest                       # must be green before you finish
-uvicorn app.main:app --reload          # http://127.0.0.1:8000
+python -m pytest                                  # 42 tests; must be green before finishing
+uvicorn app.main:app --reload                     # http://127.0.0.1:8000
 docker build -t dua-kelinci-sales .
 docker run --rm -p 8000:8000 dua-kelinci-sales
 ```
 
-## Map
+## Architecture & JIT file map
 
-`app/data.py` loads and cleans the CSV → `app/analysis.py` builds one report dict → `app/main.py` serves it as three HTML pages (`/` → `ringkasan.html`, `/wilayah-merek` → `wilayah_merek.html`, `/outlet-terlemah` → `outlet_terlemah.html`, all extending `base.html`) and as JSON (`/api/report`). `app/static/app.css` and `app/static/app.js` hold all styles and behaviour, including the page-transition router; see [docs/architecture.md](docs/architecture.md#front-end-appstatic) before editing it. `app/formatting.py` holds Indonesian number/month formatting. `app/static/fonts/` holds the self-hosted Inter + Montserrat variable fonts and their OFL licences, alongside `logo-dk.png` in `app/static/`; keep the app free of external requests. `app/config.py` holds the data path and business thresholds.
+`CSV` → `app/data.py` (`load_sales`, `load_sales_text`) → `app/analysis.py` (`build_report`) → `app/main.py` (`app.state.report`, HTML + JSON routes).
 
-## Business rules (single source of truth)
+- **Data & validation**: `app/data.py` — 15-column schema check, `,`/`;` delimiter detection, whitespace trimming, region alias normalisation, exact-row deduplication, return preservation.
+- **Metrics & attribution**: `app/analysis.py` — exact unrounded `Q1` floor (`adaptive_base_floor`), `Region → Branch → Salesman → Outlet [ID]` rollups, per-outlet SKU status (`berhenti`/`turun`/`tumbuh`/`baru`/`stabil`), dual-lens rankings, and `telegram_summary()`.
+- **HTTP & state**: `app/main.py` — serves `/`, `/wilayah-merek`, `/outlet-terlemah`, `GET /api/report`, `POST /api/upload` (stdlib `BytesParser`, 10 MiB cap, in-memory report swap), `POST /api/report/reset` (restores `app.state.default_report`), `GET /api/sample-csv`, `GET /favicon.ico`, and `GET /healthz`.
+- **Formatting & config**: `app/formatting.py` (Indonesian Rupiah, short Rupiah, `%`, month/date labels); `app/config.py` (`DATA_PATH`, `WEAK_OUTLET_COUNT`, `MAX_UPLOAD_BYTES`).
+- **Templates**: `app/templates/base.html` (shell, collapsible `#sidebar`, sticky `.mobile-bar`, `#upload-dialog`, data notes footer), `_macros.html`, `ringkasan.html`, `wilayah_merek.html`, `outlet_terlemah.html`.
+- **Frontend assets**: `app/static/app.css` (light-only tokens, responsive grids, tables, Side Peek, bottom-sheet dialog) and `app/static/app.js` (same-origin skeleton router, sorting, multi-token search, filters, segmented indicator, `[data-dim-nav]` tabs, `#outlet-side-peek`, CSV upload modal). Fonts + OFL licences live in `app/static/fonts/`.
+- **Tests**: `tests/test_data.py` (cleaning), `tests/test_analysis.py` (metrics, exact `Q1`, SKU & salesman diagnostics, Telegram), `tests/test_api.py` (routes, upload/reset, offline assets, zero hardcoded sample leakage).
 
-These are decisions, not implementation details. Change them only when the user asks, and change the doc in the same edit.
+### Quick find commands
 
-- Cleaning rules (region aliases, dedupe, returns, trimming) → read [docs/data.md](docs/data.md) before touching `app/data.py`.
-- Metric definitions, the **weakest outlet** rule and the Telegram template → read [docs/metrics.md](docs/metrics.md) before touching `app/analysis.py` or `app/config.py`.
-- Why the stack looks the way it does (stdlib over pandas, CSS bars, server-side HTML) → [docs/decisions.md](docs/decisions.md). Add an entry when you make a comparable choice.
-- Data flow, endpoints, deployment → [docs/architecture.md](docs/architecture.md).
+```bash
+rg -n "def " app/ tests/                          # list Python functions and tests
+rg -n "@app\.(get|post)" app/main.py              # list HTTP endpoints
+rg -n "function init" app/static/app.js           # list client-side initialisers
+python -m pytest -k "weakest or custom_csv" -v    # run targeted test slice
+```
 
-## When you change something
+## Business rules & context pointers (single source of truth)
 
-| You change | Also update |
+Treat these as product decisions. Change them only when asked, and update the matching doc in the same edit:
+
+- **CSV schema, region aliases, dedupe & return rules** → read [docs/data.md](docs/data.md) before editing `app/data.py`.
+- **Metric formulas, exact `Q1` weakest-outlet rule, SKU/salesman attribution & Telegram template** → read [docs/metrics.md](docs/metrics.md) before editing `app/analysis.py` or `app/config.py`.
+- **Data flow, routes, frontend router/drawer/Side Peek & Docker runtime** → read [docs/architecture.md](docs/architecture.md) before editing `app/main.py` or `app/static/`.
+- **Architectural & UX rationale (stdlib over pandas, light-only theme, Dual-Lens Q1, Notion Side Peek)** → read [docs/decisions.md](docs/decisions.md); append a dated entry for comparable trade-offs.
+
+## Change matrix
+
+| When you change | Also update |
 |---|---|
-| A cleaning rule or region alias | `docs/data.md`, `tests/test_data.py` |
-| A metric, threshold or the weakest-outlet rule | `docs/metrics.md`, `docs/decisions.md`, `tests/test_analysis.py` |
-| The sample CSV | reference numbers in `tests/test_analysis.py` and `docs/metrics.md` |
-| An endpoint, env var or the Dockerfile | `docs/architecture.md`, `README.md` |
-| Colors or layout (`app/static/app.css`, templates) | re-check WCAG AA contrast (light theme only), 320px width with no horizontal page scroll on all three pages, and the a11y list in `docs/decisions.md` |
-| Outlet table columns (`ringkasan.html`) | the column indexes (the sort `<select>` sits in `.result-line`, not the toolbar) in the "Urutkan" `<option value="index:dir">` list and `colspan` of the empty-state row |
-| Add, rename or remove a page | the route in `app/main.py`, the nav list in `base.html`, `PAGE_KEYS` and `SKELETONS` in `app.js`, `tests/test_api.py`, `docs/architecture.md` |
-| A page's layout | its skeleton in `SKELETONS` (`app.js`) so the placeholder still matches the loaded page |
+| A cleaning rule, delimiter rule or region alias | `docs/data.md`, `tests/test_data.py` |
+| A metric, `Q1` floor, SKU/salesman attribution or Telegram format | `docs/metrics.md`, `docs/decisions.md`, `tests/test_analysis.py` |
+| The bundled sample CSV | Reference numbers in `tests/test_analysis.py` and `docs/metrics.md` |
+| An endpoint, env var, upload limit or `Dockerfile` | `docs/architecture.md`, `README.md`, `tests/test_api.py` |
+| Colors, typography or layout (`app.css`, templates) | Verify light-theme WCAG AA contrast (`>= 4.5:1` text, `>= 3:1` controls/bars), `320px` width with zero horizontal page scroll across all 3 pages, and `44×44px` non-overlapping coarse-pointer targets |
+| Table columns in `ringkasan.html`, `wilayah_merek.html`, or `outlet_terlemah.html` | `colspan` on `.empty-row`, sort `<option value="index:dir">` indexes in `ringkasan.html`, and `.sticky-col` horizontal scroll sync (`.numbered-table` and `@media (max-width: 720px)`) |
+| Side Peek (`#outlet-side-peek`) or upload dialog (`#upload-dialog`) | `initSidePeek` / `initUploadDialog` in `app.js`, keyboard `Escape`/focus handling, mobile `<= 520px` sheet layout, and `tests/test_api.py` |
+| Add, rename or remove a page | `SAFE_PATHS` + route in `app/main.py`, `.sidenav` in `base.html`, `PAGE_KEYS` + `SKELETONS` in `app.js`, `tests/test_api.py`, `docs/architecture.md` |
+| A page's macro layout | Matching placeholder in `SKELETONS` (`app/static/app.js`) |
 | Anything user-visible | `CHANGELOG.md` |
 
-## Conventions
+## Conventions & guardrails
 
-- Aggregate outlets by `outlet_id`; outlet names repeat across outlets.
-- Money is integer rupiah end to end; format only at the edge with `app/formatting.py`.
-- Comparisons always use the last two months present in the data (`base` → `current`), so new months need no code change.
-- Add dependencies only when the stdlib or the installed ones cannot do the job; pin versions in `requirements.txt`.
+- **Zero hardcoded data**: every rendered label, period, region, branch, salesman, outlet, and SKU must come from `app.state.report` (`test_custom_csv_has_zero_hardcoded_sample_leakage` enforces this against custom CSV uploads).
+- **Aggregate outlets by `outlet_id`**: store names repeat across cities/branches (e.g. *Toko Sinar Abadi*).
+- **Integer Rupiah end to end**: keep money as `int` in `data.py` and `analysis.py`; format only at the template/Telegram edge via `app/formatting.py`.
+- **Dynamic period comparison**: always compare the last two months present in the dataset (`base` → `current`) so multi-month or new-year CSVs work without code changes.
+- **Mobile-native & offline discipline**: never add external network requests (CDNs, Google Fonts, external icons); never disable pinch-zoom (`user-scalable=no` / `maximum-scale=1`); keep inputs `>= 16px` on coarse pointers, gate `:hover` behind `@media (hover: hover) and (pointer: fine)`, and gate programmatic input `.focus()` behind `!matchMedia("(pointer: coarse)").matches`.
+- **Minimal dependencies**: stick to the Python stdlib plus pinned `fastapi`, `uvicorn`, and `jinja2` in `requirements.txt` unless strictly necessary.
+
+## Definition of done
+
+1. `python -m pytest` passes completely (`0` failures).
+2. Custom CSV upload/reset (`test_custom_csv_has_zero_hardcoded_sample_leakage`) passes with zero sample-data leakage.
+3. No horizontal document overflow (`clientWidth === scrollWidth`) at `320px`, `375px`, and `1366px` across `/`, `/wilayah-merek`, and `/outlet-terlemah`.
+4. Companion docs (`docs/*.md`, `README.md`, `CHANGELOG.md`) are updated per the change matrix above.
