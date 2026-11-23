@@ -14,7 +14,7 @@ docker run --rm -p 8000:8000 dua-kelinci-sales
 
 ## Map
 
-`app/data.py` loads and cleans the CSV → `app/analysis.py` builds one report dict → `app/main.py` serves it as three HTML pages (`/` → `ringkasan.html`, `/wilayah-merek` → `wilayah_merek.html`, `/outlet-terlemah` → `outlet_terlemah.html`, all extending `base.html`) and as JSON (`/api/report`). `app/static/app.css` and `app/static/app.js` hold all styles and behaviour, including the page-transition router; see [docs/architecture.md](docs/architecture.md#front-end-appstatic) before editing it. `app/formatting.py` holds Indonesian number/month formatting. `app/static/fonts/` holds the self-hosted Inter font + its OFL licence; keep the app free of external requests. `app/config.py` holds the data path and business thresholds.
+`app/data.py` loads and cleans the CSV → `app/analysis.py` builds one report dict → `app/main.py` serves it as three HTML pages (`/` → `ringkasan.html`, `/wilayah-merek` → `wilayah_merek.html`, `/outlet-terlemah` → `outlet_terlemah.html`, all extending `base.html`) and as JSON (`/api/report`). `app/static/app.css` and `app/static/app.js` hold all styles and behaviour, including the page-transition router; see [docs/architecture.md](docs/architecture.md#front-end-appstatic) before editing it. `app/formatting.py` holds Indonesian number/month formatting. `app/static/fonts/` holds the self-hosted Inter + Montserrat variable fonts and their OFL licences, alongside `logo-dk.png` and `logo-dk-white.png` in `app/static/`; keep the app free of external requests. `app/config.py` holds the data path and business thresholds.
 
 ## Business rules (single source of truth)
 

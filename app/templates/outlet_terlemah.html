@@ -12,79 +12,105 @@
 {%- set lowest_up = a.lowest_total|selectattr("change_idr", "gt", 0)|list|length -%}
 {%- set drop_grosir = a.largest_drop_idr|selectattr("outlet_type", "equalto", "Grosir")|list|length -%}
 
-{{ m.page_head("Outlet terlemah", r.weakest|length ~ " outlet yang penjualannya paling merosot dari " ~ base|month_label ~ " ke " ~ current|month_label ~ ", beserta cara memilih dan hitungannya.") }}
+{% call m.page_head(
+     "Outlet terlemah",
+     r.weakest|length ~ " outlet yang penjualannya paling merosot dari " ~ base|month_label ~ " ke " ~ current|month_label ~ ", beserta metodologi penyaringan dan bukti hitungannya.",
+     "Diagnostik Penurunan Outlet · PT Dua Kelinci"
+   ) %}
+  <a class="btn btn-secondary" href="/#outlet">Lihat semua {{ a.total }} outlet &rarr;</a>
+{% endcall %}
 
 <div class="stack">
-  <section class="card rule-card" aria-labelledby="aturan">
-    <h2 id="aturan">Aturan yang dipakai</h2>
-    <p>Outlet terlemah adalah outlet dengan <strong>penurunan penjualan bersih (%) terbesar</strong> dari {{ base|month_label }} ke {{ current|month_label }}.</p>
-    <div class="formula" role="group" aria-label="Rumus perubahan">
-      <span class="formula-label">Rumus</span>
-      <span class="formula-body">Perubahan (%) = (Penjualan {{ current|month_short }} − Penjualan {{ base|month_short }}) ÷ Penjualan {{ base|month_short }} × 100</span>
-    </div>
-    <ul class="checks">
-      <li>Penjualan {{ base|month_short }} minimal <strong>{{ min_base|rp }}</strong>, supaya outlet sangat kecil tidak ikut terhitung.</li>
-      <li>Hanya outlet yang penjualannya <strong>turun</strong>.</li>
-      <li>Ambil <strong>{{ r.weakest_rule.count }} outlet</strong> dengan penurunan persen paling besar.</li>
-    </ul>
-  </section>
+  <div class="method-split">
+    <section class="card rule-card" aria-labelledby="aturan">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Kriteria Evaluasi</p>
+          <h2 id="aturan">Aturan yang dipakai</h2>
+        </div>
+      </div>
+      <p>Outlet terlemah didefinisikan sebagai outlet dengan <strong>penurunan penjualan bersih (%) terbesar</strong> dari {{ base|month_label }} ke {{ current|month_label }}.</p>
+      <div class="formula" role="group" aria-label="Rumus perubahan">
+        <span class="formula-label">Rumus</span>
+        <span class="formula-body">Perubahan (%) = (Penjualan {{ current|month_short }} − Penjualan {{ base|month_short }}) ÷ Penjualan {{ base|month_short }} × 100</span>
+      </div>
+      <ul class="checks">
+        <li>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
+          <span>Penjualan {{ base|month_short }} minimal <strong>{{ min_base|rp }}</strong>, supaya outlet sangat kecil tidak mendistorsi persentase.</span>
+        </li>
+        <li>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
+          <span>Hanya menghitung outlet yang penjualannya benar-benar <strong>turun</strong>.</span>
+        </li>
+        <li>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
+          <span>Ambil <strong>{{ r.weakest_rule.count }} outlet</strong> dengan penurunan persen paling tajam untuk tindak lanjut tim lapangan.</span>
+        </li>
+      </ul>
+    </section>
 
-  <section class="card" aria-labelledby="penyaringan">
-    <div class="card-head">
-      <h2 id="penyaringan">Cara menyaring {{ a.total }} outlet</h2>
-      <span class="card-sub">Angka di kanan = outlet yang tersisa</span>
-    </div>
-    <ol class="funnel">
-      <li>
-        <div class="funnel-text">
-          <h3>Mulai dari semua outlet</h3>
-          <p>Semua outlet yang bertransaksi di {{ base|month_label }} atau {{ current|month_label }}.</p>
+    <section class="card" aria-labelledby="penyaringan">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Alur Seleksi Bertahap</p>
+          <h2 id="penyaringan">Cara menyaring {{ a.total }} outlet</h2>
         </div>
-        <div class="funnel-count"><span class="bar" aria-hidden="true"><span style="width: 100%"></span></span><strong>{{ a.total }}</strong></div>
-      </li>
-      <li>
-        <div class="funnel-text">
-          <h3>Keluarkan {{ n_new }} outlet baru</h3>
-          <p>{% if a.new %}{{ a.new|map(attribute="name")|join(", ") }} belum punya penjualan {{ base|month_short }}, jadi perubahannya tidak bisa dihitung.{% else %}Tidak ada outlet baru.{% endif %}</p>
-        </div>
-        <div class="funnel-count"><span class="bar" aria-hidden="true"><span style="width: {{ '%.1f'|format(after_new / a.total * 100) }}%"></span></span><strong>{{ after_new }}</strong></div>
-      </li>
-      <li>
-        <div class="funnel-text">
-          <h3>Keluarkan {{ n_small }} outlet kecil</h3>
-          <p>Penjualan {{ base|month_short }} di bawah {{ min_base|rp }}. Angka dasarnya kecil, jadi persennya mudah melonjak.{% if small_example %} Contoh: {{ small_example.name }} {{ small_example.branch }} turun {{ small_example.change_pct|pct(digits=0, signed=false)|replace("−", "") }} padahal selisihnya hanya {{ (0 - small_example.change_idr)|rp }}.{% endif %}</p>
-          {% if a.small %}
-          <details class="why">
-            <summary><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg>Lihat {{ n_small }} outlet yang dikeluarkan</summary>
-            <ul class="plain-list">
-              {%- for o in a.small %}
-              <li><span>{{ o.name }} <span class="muted">· {{ o.branch }}</span></span><span class="num">{{ o.base|rp }}</span></li>
-              {%- endfor %}
-            </ul>
-          </details>
-          {% endif %}
-        </div>
-        <div class="funnel-count"><span class="bar" aria-hidden="true"><span style="width: {{ '%.1f'|format(a.eligible / a.total * 100) }}%"></span></span><strong>{{ a.eligible }}</strong></div>
-      </li>
-      <li>
-        <div class="funnel-text">
-          <h3>Ambil yang penjualannya turun</h3>
-          <p>Dari {{ a.eligible }} outlet, {{ a.declining }} turun dan {{ a.eligible - a.declining }} naik atau tetap.</p>
-        </div>
-        <div class="funnel-count"><span class="bar" aria-hidden="true"><span style="width: {{ '%.1f'|format(a.declining / a.total * 100) }}%"></span></span><strong>{{ a.declining }}</strong></div>
-      </li>
-      <li>
-        <div class="funnel-text">
-          <h3>Urutkan dan ambil {{ r.weakest_rule.count }} teratas</h3>
-          <p>Urutkan dari penurunan persen terbesar.</p>
-        </div>
-        <div class="funnel-count"><span class="bar bar-neg" aria-hidden="true"><span style="width: {{ '%.1f'|format(r.weakest|length / a.total * 100) }}%"></span></span><strong>{{ r.weakest|length }}</strong></div>
-      </li>
-    </ol>
-  </section>
+        <span class="card-sub">Angka kanan = outlet tersisa</span>
+      </div>
+      <ol class="funnel">
+        <li>
+          <div class="funnel-text">
+            <h3>Mulai dari semua outlet</h3>
+            <p>Semua outlet yang bertransaksi di {{ base|month_label }} atau {{ current|month_label }}.</p>
+          </div>
+          <div class="funnel-count"><span class="bar bar-green" aria-hidden="true"><span style="width: 100%"></span></span><strong>{{ a.total }}</strong></div>
+        </li>
+        <li>
+          <div class="funnel-text">
+            <h3>Keluarkan {{ n_new }} outlet baru</h3>
+            <p>{% if a.new %}{{ a.new|map(attribute="name")|join(", ") }} belum punya penjualan {{ base|month_short }}, jadi perubahannya tidak bisa dihitung.{% else %}Tidak ada outlet baru.{% endif %}</p>
+          </div>
+          <div class="funnel-count"><span class="bar bar-green" aria-hidden="true"><span style="width: {{ '%.1f'|format(after_new / a.total * 100) }}%"></span></span><strong>{{ after_new }}</strong></div>
+        </li>
+        <li>
+          <div class="funnel-text">
+            <h3>Keluarkan {{ n_small }} outlet kecil</h3>
+            <p>Penjualan {{ base|month_short }} di bawah {{ min_base|rp }}. Angka dasarnya kecil, jadi persennya mudah melonjak.{% if small_example %} Contoh: {{ small_example.name }} {{ small_example.branch }} turun {{ small_example.change_pct|pct(digits=0, signed=false)|replace("−", "") }} padahal selisihnya hanya {{ (0 - small_example.change_idr)|rp }}.{% endif %}</p>
+            {% if a.small %}
+            <details class="why">
+              <summary><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg>Lihat {{ n_small }} outlet yang dikeluarkan</summary>
+              <ul class="plain-list">
+                {%- for o in a.small %}
+                <li><span>{{ o.name }} <span class="muted">· {{ o.branch }}</span></span><span class="num">{{ o.base|rp }}</span></li>
+                {%- endfor %}
+              </ul>
+            </details>
+            {% endif %}
+          </div>
+          <div class="funnel-count"><span class="bar bar-green" aria-hidden="true"><span style="width: {{ '%.1f'|format(a.eligible / a.total * 100) }}%"></span></span><strong>{{ a.eligible }}</strong></div>
+        </li>
+        <li>
+          <div class="funnel-text">
+            <h3>Ambil yang penjualannya turun</h3>
+            <p>Dari {{ a.eligible }} outlet yang memenuhi syarat ukuran, {{ a.declining }} turun dan {{ a.eligible - a.declining }} naik atau tetap.</p>
+          </div>
+          <div class="funnel-count"><span class="bar" aria-hidden="true"><span style="width: {{ '%.1f'|format(a.declining / a.total * 100) }}%"></span></span><strong>{{ a.declining }}</strong></div>
+        </li>
+        <li>
+          <div class="funnel-text">
+            <h3>Urutkan dan ambil {{ r.weakest_rule.count }} teratas</h3>
+            <p>Diurutkan dari penurunan persentase terbesar untuk prioritas kunjungan.</p>
+          </div>
+          <div class="funnel-count"><span class="bar bar-neg" aria-hidden="true"><span style="width: {{ '%.1f'|format(r.weakest|length / a.total * 100) }}%"></span></span><strong>{{ r.weakest|length }}</strong></div>
+        </li>
+      </ol>
+    </section>
+  </div>
 
   <section aria-labelledby="hasil">
     <div class="section-head">
+      <p class="eyebrow">Daftar Prioritas Tindak Lanjut</p>
       <h2 id="hasil">Hasil dan hitungannya</h2>
     </div>
     {% if r.weakest %}
@@ -93,7 +119,7 @@
       {%- set kept = o.current / o.base * 100 %}
       <li class="card result">
         <div class="result-head">
-          <span class="rank" aria-hidden="true">{{ loop.index }}</span>
+          <span class="rank" aria-hidden="true">#{{ loop.index }}</span>
           <div class="who">
             <h3 class="name">{{ o.name }}</h3>
             <p class="meta">{{ o.branch }}, {{ o.region }} · {{ o.outlet_type }} · {{ o.outlet_id }}</p>
@@ -108,7 +134,7 @@
         <p class="calc-line"><span class="formula-label">Hitungan</span> {{ o.change_idr|rp }} ÷ {{ o.base|rp }} × 100 = <strong>{{ o.change_pct|pct }}</strong></p>
         <div class="keep">
           <span class="bar bar-neg" aria-hidden="true"><span style="width: {{ '%.1f'|format(kept if kept < 100 else 100) }}%"></span></span>
-          <span>Penjualan {{ current|month_short }} tinggal {{ kept|pct(digits=0, signed=false) }} dari {{ base|month_short }}</span>
+          <span>Penjualan {{ current|month_short }} tinggal <strong>{{ kept|pct(digits=0, signed=false) }}</strong> dari {{ base|month_short }}</span>
         </div>
       </li>
       {%- endfor %}
@@ -120,8 +146,9 @@
 
   <section aria-labelledby="pembanding">
     <div class="section-head">
+      <p class="eyebrow">Validasi Metodologi</p>
       <h2 id="pembanding">Kenapa tidak memakai cara lain?</h2>
-      <p class="section-lede">Dua definisi lain yang sering dipakai, dengan hasilnya pada data yang sama.</p>
+      <p class="section-lede">Dua definisi alternatif yang sering dipakai di lapangan, beserta hasilnya pada dataset yang sama.</p>
     </div>
     <div class="grid-2 compare">
       <div class="card">
@@ -131,7 +158,7 @@
           <li><span>{{ o.name }} <span class="muted">· {{ o.branch }}</span></span><span class="num">{{ o.total|rp_short }} {{ m.pill(o.change_pct, digits=0) }}</span></li>
           {%- endfor %}
         </ol>
-        <p class="verdict"><strong>{{ lowest_up }} dari {{ a.lowest_total|length }}</strong> outlet ini justru naik. Mereka kecil, bukan melemah.</p>
+        <p class="verdict"><strong>{{ lowest_up }} dari {{ a.lowest_total|length }}</strong> outlet ini justru naik. Mereka kecil secara skala, bukan sedang melemah.</p>
       </div>
       <div class="card">
         <h3 class="card-title">Penurunan rupiah terbesar</h3>
@@ -141,10 +168,10 @@
           {%- endfor %}
         </ol>
         {%- set top_drop = a.largest_drop_idr[0] %}
-        <p class="verdict"><strong>{{ drop_grosir }} dari {{ a.largest_drop_idr|length }}</strong> adalah grosir. {{ top_drop.name }} masih outlet terbesar ke-{{ ranked_ids.index(top_drop.outlet_id) + 1 }} dari {{ a.total }} meski turun {{ (0 - top_drop.change_idr)|rp_short }}: angkanya besar karena outletnya besar.</p>
+        <p class="verdict"><strong>{{ drop_grosir }} dari {{ a.largest_drop_idr|length }}</strong> adalah grosir besar. {{ top_drop.name }} masih outlet terbesar ke-{{ ranked_ids.index(top_drop.outlet_id) + 1 }} dari {{ a.total }} meski turun {{ (0 - top_drop.change_idr)|rp_short }}: nominalnya besar semata karena skala outletnya besar.</p>
       </div>
     </div>
-    <p class="conclusion">Persentase dengan ambang minimal menemukan outlet yang benar-benar merosot, berapa pun ukurannya. Daftar lengkap outlet ada di <a href="/#outlet">tabel semua outlet di Ringkasan</a>.</p>
+    <p class="conclusion">Persentase penurunan dengan ambang minimal menemukan outlet yang benar-benar kehilangan traksi penjualan, berapa pun ukurannya. Daftar lengkap outlet tersedia di <a href="/#outlet">tabel semua outlet di Ringkasan</a>.</p>
   </section>
 </div>
 {% endblock %}

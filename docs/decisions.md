@@ -2,6 +2,15 @@
 
 Newest first. Each entry: what was decided, why, and what would make us revisit it.
 
+## 2026-11-23 — Full brand-aligned redesign matching duakelinci.com/en (requested by the user)
+
+References studied: live visual and CSS inspection of `https://duakelinci.com/en` (`#D61A21` corporate crimson, `#1BAB51`/`#0C8037` heritage leaf green, `Montserrat` display headings, `20px` card radii, pill CTAs and two-tier crimson footer), plus Mobbin screens from Shopify Analytics, Square Orders, Causal, Churnkey and Monarch.
+
+- **Brand palette in OKLCH (`app/static/app.css`)**: replaces the generic neutral-grey + orange palette with Dua Kelinci's official crimson (`--brand-red: oklch(0.515 0.198 26.5)`) and heritage green (`--brand-green: oklch(0.505 0.132 152)`) on a warm alabaster canvas (`--bg: oklch(0.982 0.004 65)`). All tokens are clamped inside sRGB with progressive Display-P3 chroma boost (`@media (color-gamut: p3)`), passing WCAG AA ≥ 4.5:1 for text and ≥ 3.0:1 for controls, bars and scrollbar thumbs.
+- **Typography pairing (100% self-hosted)**: `MontserratVariable.woff2` (SIL OFL, weights 500–800) pairs with `InterVariable.woff2` (body copy, controls, `tabular-nums` data columns). Official Dua Kelinci logos (`logo-dk.png`, `logo-dk-white.png`) are also served from `app/static/`, keeping zero external network requests.
+- **Surfaces & layout**: cards use a 3-layer translucent shadow stack and concentric radii (`20px` outer card → `12px` inner table/box → `8px` nested item; `999px` pills for primary/secondary buttons and top navigation). Ringkasan adds an executive hero banner, a heritage-green featured total-sales KPI card, top-4 region/brand leaderboards, a 5-weakest-outlets priority preview, and a two-tier footer pairing CSV cleaning metrics with PT Dua Kelinci's corporate band. Wilayah & merek adds an 8-color stacked share composition bar. Outlet terlemah pairs the rule and 5-step funnel side by side above diagnostic calculation cards.
+- **Mobile & accessibility**: verified zero horizontal page scroll down to `320px` width across all three routes, `16px` (`1rem`) minimum font size on all form controls to prevent iOS zoom, ≥ 44px touch targets, capability-gated `:hover`, `forced-colors` fallbacks, and strict `prefers-reduced-motion` handling.
+
 ## 2026-11-23 — Softer focus style, sliding segmented control, styled dropdown picker (requested by the user)
 
 - **Focus**: the user asked to remove the thick black focus boxes. Removing focus indicators would leave keyboard users lost (WCAG 2.4.7), so they were **restyled, not removed**: a 2px accent ring (`--focus`, 3.6:1 on white) on buttons, links and table regions; text fields and dropdowns show an accent border plus a soft halo (`--focus-halo`) instead of an outline. Do not set `outline: none` without one of these replacements.

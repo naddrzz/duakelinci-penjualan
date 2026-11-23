@@ -6,47 +6,88 @@
 {%- set t = r.totals -%}
 {%- set views = [("wilayah", "Wilayah", "wilayah", r.regions), ("merek", "Merek", "merek", r.brands)] -%}
 
-{{ m.page_head("Wilayah dan merek", "Penjualan bersih " ~ base|month_label ~ " dan " ~ current|month_label ~ ", dibandingkan per wilayah atau per merek.") }}
-
-<form class="view-switch card" method="get" action="/wilayah-merek" data-view-switch>
-  <label for="lihat">Tampilkan tabel</label>
-  <select id="lihat" name="lihat" class="field">
-    {%- for key, label, noun, lines in views %}
-    <option value="{{ key }}"{% if view == key %} selected{% endif %}>Per {{ noun }} ({{ lines|length }} {{ noun }})</option>
-    {%- endfor %}
-  </select>
-  <noscript><button type="submit" class="btn btn-secondary">Tampilkan</button></noscript>
-</form>
+{% call m.page_head(
+     "Wilayah dan merek",
+     "Penjualan bersih " ~ base|month_label ~ " dan " ~ current|month_label ~ " dalam nilai rupiah penuh, dibandingkan per wilayah distribusi atau per lini merek produk.",
+     "Distribusi & Portofolio Merek · PT Dua Kelinci"
+   ) %}
+  <form class="view-switch" method="get" action="/wilayah-merek" data-view-switch>
+    <label for="lihat">Dimensi laporan</label>
+    <select id="lihat" name="lihat" class="field">
+      {%- for key, label, noun, lines in views %}
+      <option value="{{ key }}"{% if view == key %} selected{% endif %}>Per {{ noun }} ({{ lines|length }} {{ noun }})</option>
+      {%- endfor %}
+    </select>
+    <noscript><button type="submit" class="btn btn-secondary">Tampilkan</button></noscript>
+  </form>
+{% endcall %}
 
 {%- for key, label, noun, lines in views %}
 {%- set by_change = lines|rejectattr("change_pct", "none")|sort(attribute="change_pct")|list %}
 <section class="stack view" data-view="{{ key }}" aria-labelledby="h-{{ key }}"{% if view != key %} hidden{% endif %}>
   <h2 id="h-{{ key }}" class="sr-only">Penjualan per {{ noun }}</h2>
   <dl class="tiles">
-    <div class="card tile">
+    <div class="card tile tile-primary">
       <dt>{{ label }} terbesar</dt>
-      <dd><span class="tile-value">{{ lines[0].name }}</span><span class="tile-line">{{ lines[0].total|rp_short }} · {{ lines[0].share_pct|pct(signed=false) }} dari total</span></dd>
+      <dd>
+        <span class="tile-value">{{ lines[0].name }}</span>
+        <span class="tile-line"><strong>{{ lines[0].total|rp_short }}</strong> · {{ lines[0].share_pct|pct(signed=false) }} dari total</span>
+      </dd>
     </div>
     {% if by_change %}
-    <div class="card tile">
+    <div class="card tile tile-pos">
       <dt>Tumbuh tercepat</dt>
-      <dd><span class="tile-value">{{ by_change[-1].name }}</span><span class="tile-line">{{ m.pill(by_change[-1].change_pct) }} {{ by_change[-1].by_month[base]|rp_short }} &rarr; {{ by_change[-1].by_month[current]|rp_short }}</span></dd>
+      <dd>
+        <span class="tile-value">{{ by_change[-1].name }}</span>
+        <span class="tile-line">{{ m.pill(by_change[-1].change_pct) }} {{ by_change[-1].by_month[base]|rp_short }} &rarr; {{ by_change[-1].by_month[current]|rp_short }}</span>
+      </dd>
     </div>
-    <div class="card tile">
+    <div class="card tile tile-neg">
       <dt>Turun terdalam</dt>
-      <dd><span class="tile-value">{{ by_change[0].name }}</span><span class="tile-line">{{ m.pill(by_change[0].change_pct) }} {{ by_change[0].by_month[base]|rp_short }} &rarr; {{ by_change[0].by_month[current]|rp_short }}</span></dd>
+      <dd>
+        <span class="tile-value">{{ by_change[0].name }}</span>
+        <span class="tile-line">{{ m.pill(by_change[0].change_pct) }} {{ by_change[0].by_month[base]|rp_short }} &rarr; {{ by_change[0].by_month[current]|rp_short }}</span>
+      </dd>
     </div>
     {% endif %}
     <div class="card tile">
       <dt>Total {{ lines|length }} {{ noun }}</dt>
-      <dd><span class="tile-value">{{ t.net|rp_short }}</span><span class="tile-line">{{ m.pill(t.change_pct) }} dari {{ base|month_short }} ke {{ current|month_short }}</span></dd>
+      <dd>
+        <span class="tile-value">{{ t.net|rp_short }}</span>
+        <span class="tile-line">{{ m.pill(t.change_pct) }} dari {{ base|month_short }} ke {{ current|month_short }}</span>
+      </dd>
     </div>
   </dl>
 
-  <div class="card">
+  <div class="card composition-card">
     <div class="card-head">
-      <h3 class="card-title" id="t-{{ key }}">Tabel penjualan per {{ noun }}</h3>
-      <span class="card-sub">Pilih judul kolom untuk mengurutkan.</span>
+      <div>
+        <h3 class="card-title">Komposisi pangsa penjualan per {{ noun }}</h3>
+        <p class="card-sub">Proporsi terhadap total penjualan bersih {{ t.net|rp }}</p>
+      </div>
+    </div>
+    <div class="stacked-bar" aria-hidden="true">
+      {%- for l in lines %}
+      <span class="seg seg-{{ loop.index0 % 8 }}" style="width: {{ '%.2f'|format(l.share_pct) }}%" title="{{ l.name }}: {{ l.share_pct|pct(signed=false) }}"></span>
+      {%- endfor %}
+    </div>
+    <ul class="comp-legend">
+      {%- for l in lines %}
+      <li>
+        <span class="swatch seg-{{ loop.index0 % 8 }}" aria-hidden="true"></span>
+        <span class="comp-name">{{ l.name }}</span>
+        <span class="comp-pct num">{{ l.share_pct|pct(signed=false) }}</span>
+      </li>
+      {%- endfor %}
+    </ul>
+  </div>
+
+  <div class="card table-section">
+    <div class="card-head">
+      <div>
+        <h3 class="card-title" id="t-{{ key }}">Tabel penjualan per {{ noun }}</h3>
+        <p class="card-sub">Menampilkan nilai rupiah utuh. Pilih judul kolom untuk mengurutkan.</p>
+      </div>
     </div>
     <div class="table-wrap" role="region" aria-labelledby="t-{{ key }}" tabindex="0">
       <table class="data sortable wide">
@@ -74,7 +115,7 @@
             <td class="num" data-value="{{ l.change_pct if l.change_pct is not none else '' }}">{{ m.pill(l.change_pct) }}</td>
             <td class="share-col" data-value="{{ l.share_pct }}">
               <span class="share">
-                <span class="bar" aria-hidden="true"><span style="width: {{ '%.1f'|format(l.share_pct) }}%"></span></span>
+                <span class="bar{% if key == 'wilayah' %} bar-green{% endif %}" aria-hidden="true"><span style="width: {{ '%.1f'|format(l.share_pct) }}%"></span></span>
                 <span class="num">{{ l.share_pct|pct(signed=false) }}</span>
               </span>
             </td>

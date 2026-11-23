@@ -7,6 +7,7 @@
   <meta name="color-scheme" content="light">
   <title>{{ title }} · Penjualan Dua Kelinci {{ r.period.label }}</title>
   <link rel="preload" href="/static/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/MontserratVariable.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ asset_url('app.css') }}">
   <script src="{{ asset_url('app.js') }}" defer></script>
 </head>
@@ -16,7 +17,14 @@
 
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">DK</span>Dua Kelinci <small>Penjualan</small></a>
+    <a class="brand" href="/">
+      <img class="brand-logo" src="{{ asset_url('logo-dk.png') }}" width="66" height="41" alt="">
+      <span class="brand-copy">
+        <span class="brand-title">Dua Kelinci</span>
+        <span class="brand-sub">Analitik Penjualan</span>
+      </span>
+    </a>
+
     <nav class="topnav" aria-label="Halaman">
       <ul>
         {%- for href, key, label in [("/", "ringkasan", "Ringkasan"), ("/wilayah-merek", "wilayah-merek", "Wilayah & merek"), ("/outlet-terlemah", "outlet-terlemah", "Outlet terlemah")] %}
@@ -24,6 +32,11 @@
         {%- endfor %}
       </ul>
     </nav>
+
+    <div class="period-badge" aria-label="Periode aktif">
+      <span class="period-dot" aria-hidden="true"></span>
+      <span>Periode {{ r.period.label }}</span>
+    </div>
   </div>
 </header>
 
@@ -31,17 +44,57 @@
 {% block content %}{% endblock %}
 </main>
 
-<footer>
-  <section class="card" aria-labelledby="catatan">
-    <h2 id="catatan">Catatan data</h2>
-    <ul>
-      <li>{{ q.raw_rows }} baris dibaca, {{ q.duplicates_removed }} baris duplikat dibuang ({{ q.duplicates_net_idr|rp }}), {{ q.clean_rows }} baris dipakai. Sumber: {{ r.source }}.</li>
-      <li>{{ q.regions_normalized }} penulisan wilayah diseragamkan (mis. “Jabar”, “JAWA BARAT” → Jawa Barat); {{ q.text_trimmed }} baris dirapikan dari spasi berlebih.</li>
-      <li>{{ q.return_rows }} baris retur tetap dihitung ({{ q.returns_net_idr|rp }}); {{ q.blank_salesman }} baris tanpa nama salesman.</li>
-      {% if q.amount_mismatches %}<li><strong>{{ q.amount_mismatches }} baris angkanya tidak konsisten</strong> (gross ≠ qty × harga atau net ≠ gross − diskon); net_sales_idr tetap dipakai.</li>{% endif %}
-      {% if q.unknown_regions %}<li><strong>Wilayah tidak dikenal:</strong> {{ q.unknown_regions|join(", ") }}.</li>{% endif %}
-    </ul>
-  </section>
+<footer class="site-footer">
+  <div class="footer-notes-wrap">
+    <section class="card data-notes" aria-labelledby="catatan">
+      <div class="notes-head">
+        <div>
+          <p class="eyebrow">Transparansi Sumber CSV</p>
+          <h2 id="catatan">Catatan data</h2>
+        </div>
+        <span class="source-chip">{{ r.source }}</span>
+      </div>
+      <dl class="notes-stats">
+        <div><dt>Baris dibaca</dt><dd class="num">{{ q.raw_rows }}</dd></div>
+        <div><dt>Baris bersih dipakai</dt><dd class="num">{{ q.clean_rows }}</dd></div>
+        <div><dt>Duplikat dibuang</dt><dd class="num">{{ q.duplicates_removed }} ({{ q.duplicates_net_idr|rp_short }})</dd></div>
+        <div><dt>Wilayah diseragamkan</dt><dd class="num">{{ q.regions_normalized }} baris</dd></div>
+      </dl>
+      <ul class="notes-list">
+        <li>{{ q.raw_rows }} baris dibaca, {{ q.duplicates_removed }} baris duplikat dibuang ({{ q.duplicates_net_idr|rp }}), {{ q.clean_rows }} baris dipakai. Sumber: {{ r.source }}.</li>
+        <li>{{ q.regions_normalized }} penulisan wilayah diseragamkan (mis. “Jabar”, “JAWA BARAT” &rarr; Jawa Barat); {{ q.text_trimmed }} baris dirapikan dari spasi berlebih.</li>
+        <li>{{ q.return_rows }} baris retur tetap dihitung ({{ q.returns_net_idr|rp }}); {{ q.blank_salesman }} baris tanpa nama salesman.</li>
+        {% if q.amount_mismatches %}<li><strong>{{ q.amount_mismatches }} baris angkanya tidak konsisten</strong> (gross &ne; qty &times; harga atau net &ne; gross &minus; diskon); net_sales_idr tetap dipakai.</li>{% endif %}
+        {% if q.unknown_regions %}<li><strong>Wilayah tidak dikenal:</strong> {{ q.unknown_regions|join(", ") }}.</li>{% endif %}
+      </ul>
+    </section>
+  </div>
+
+  <div class="corp-band">
+    <div class="corp-inner">
+      <div class="corp-brand">
+        <img class="footer-logo" src="{{ asset_url('logo-dk-white.png') }}" width="112" height="68" alt="PT Dua Kelinci">
+        <p>Tumbuh bersama menciptakan masyarakat yang bahagia. Dasbor pemantauan penjualan bersih bulanan untuk tim manajemen penjualan.</p>
+      </div>
+      <div class="corp-locations">
+        <div>
+          <h3>Kantor Pusat</h3>
+          <p>Jl. Mayjen HR. Muhammad No. 24, Surabaya 60189, Jawa Timur</p>
+        </div>
+        <div>
+          <h3>Fasilitas Manufaktur</h3>
+          <p>Jl. Raya Pati – Kudus Km. 6,3, Pati 59163, Jawa Tengah</p>
+        </div>
+        <div>
+          <h3>Kantor Komersial</h3>
+          <p>Altira Business Park, Jl. Yos Sudarso Kav. 85, Sunter, Jakarta Utara</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="corp-subband">
+    <p>PT Dua Kelinci · Laporan Internal Penjualan Bersih {{ r.period.label }} · Seluruh aset berjalan luring tanpa koneksi pihak ketiga</p>
+  </div>
 </footer>
 </body>
 </html>

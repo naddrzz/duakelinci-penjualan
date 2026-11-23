@@ -18,12 +18,18 @@
       const text = document.getElementById(button.dataset.copy);
       const status = document.getElementById(button.dataset.status);
       if (!text || !status) return;
-      let timer;
+      let statusTimer;
+      let iconTimer;
       const say = (msg, ok) => {
         status.textContent = msg;
         status.classList.toggle("ok", ok);
-        clearTimeout(timer);
-        timer = setTimeout(() => { status.textContent = ""; status.classList.remove("ok"); }, 5000);
+        clearTimeout(statusTimer);
+        statusTimer = setTimeout(() => { status.textContent = ""; status.classList.remove("ok"); }, 5000);
+        if (ok) {
+          button.dataset.copied = "true";
+          clearTimeout(iconTimer);
+          iconTimer = setTimeout(() => { delete button.dataset.copied; }, 1800);
+        }
       };
       button.addEventListener("click", async () => {
         try {
@@ -129,7 +135,7 @@
       type.value = "";
       const all = toolbar.querySelector('input[name="status"][value=""]');
       all.checked = true;
-      all.dispatchEvent(new Event("change", { bubbles: true })); // moves the indicator
+      all.dispatchEvent(new Event("change", { bubbles: true }));
       apply();
       search.focus();
     }
@@ -151,8 +157,6 @@
   }
 
   // ---------------------------------------------------------------- segmented control
-  // Slides one indicator under the checked option. CSS animates the move, so a
-  // quick second change retargets mid-flight instead of restarting.
   function initSegmented(root) {
     root.querySelectorAll(".segmented").forEach((group) => {
       const indicator = group.querySelector(".seg-indicator");
@@ -164,7 +168,7 @@
         indicator.style.height = `${label.offsetHeight}px`;
         indicator.style.translate = `${label.offsetLeft}px ${label.offsetTop}px`;
       };
-      const jump = () => { // reposition without animating (first paint, resize, late font)
+      const jump = () => {
         indicator.style.transition = "none";
         place();
         void indicator.offsetWidth;
@@ -191,7 +195,7 @@
         view.hidden = !active;
         if (active) {
           view.classList.remove("is-entering");
-          void view.offsetWidth; // restart the one-shot entrance
+          void view.offsetWidth;
           view.classList.add("is-entering");
         }
       });
@@ -209,10 +213,10 @@
     initViewSwitch(root);
   }
 
-  // ---------------------------------------------------------------- skeletons
+  // ---------------------------------------------------------------- skeletons (matched to redesigned layouts)
   const sk = (cls) => `<span class="sk ${cls}"></span>`;
   const skCard = (inner) => `<div class="sk-card">${inner}</div>`;
-  const skHead = () => `<div class="skeleton">${sk("sk-title")}${sk("sk-line")}</div>`;
+  const skHero = () => `<div class="skeleton-hero">${sk("sk-eyebrow")}${sk("sk-title")}${sk("sk-line")}</div>`;
   const skRows = (n) => Array.from({ length: n }, () => sk("sk-row")).join("");
   const skGrid = (cols, cards) =>
     `<div class="sk-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, ${cols}px), 1fr))">${cards}</div>`;
@@ -220,24 +224,24 @@
 
   const SKELETONS = {
     "/": () =>
-      skHead() +
+      skHero() +
       `<div class="stack">` +
       skGrid(240, kpiCard().repeat(4)) +
+      skGrid(420, skCard(sk("sk-line short") + skRows(4)) + skCard(sk("sk-line short") + skRows(5))) +
       skGrid(420, skCard(sk("sk-line short") + sk("sk-area")) + skCard(sk("sk-line short") + skRows(4))) +
       skCard(sk("sk-line short") + skRows(6)) +
       `</div>`,
     "/wilayah-merek": () =>
-      skHead() +
+      skHero() +
       `<div class="stack">` +
-      skCard(sk("sk-line short")) +
       skGrid(240, kpiCard().repeat(4)) +
+      skCard(sk("sk-line short") + sk("sk-row")) +
       skCard(sk("sk-line short") + skRows(7)) +
       `</div>`,
     "/outlet-terlemah": () =>
-      skHead() +
+      skHero() +
       `<div class="stack">` +
-      skCard(sk("sk-line short") + sk("sk-line") + sk("sk-row")) +
-      skCard(sk("sk-line short") + skRows(5)) +
+      skGrid(420, skCard(sk("sk-line short") + sk("sk-area")) + skCard(sk("sk-line short") + skRows(5))) +
       skGrid(420, skCard(sk("sk-line") + sk("sk-row") + sk("sk-line short")).repeat(4)) +
       `</div>`,
   };
@@ -268,13 +272,13 @@
     const { signal } = controller;
 
     setProgress("start");
-    updateNav(PAGE_KEYS[url.pathname]); // reflect the click immediately
+    updateNav(PAGE_KEYS[url.pathname]);
     main.setAttribute("aria-busy", "true");
     main.classList.remove("is-entering");
     main.classList.add("is-leaving");
     const response = fetch(url, { signal, headers: { Accept: "text/html" } });
 
-    await wait(120); // let the outgoing content fade
+    await wait(120);
     if (signal.aborted) return;
     main.classList.remove("is-leaving");
     main.innerHTML = (SKELETONS[url.pathname] || SKELETONS["/"])();
@@ -288,7 +292,7 @@
       doc = new DOMParser().parseFromString(await res.text(), "text/html");
     } catch (error) {
       if (error.name === "AbortError") return;
-      location.assign(url); // let the browser show whatever went wrong
+      location.assign(url);
       return;
     }
     const next = doc.getElementById("isi");
@@ -323,7 +327,6 @@
     if (link.target || link.hasAttribute("download")) return;
     const url = new URL(link.href);
     if (url.origin !== location.origin || !ROUTES.has(url.pathname)) return;
-    // Same page, only the hash differs: let the browser scroll.
     if (url.pathname === location.pathname && url.search === location.search && url.hash) return;
     event.preventDefault();
     if (url.href === location.href) return;

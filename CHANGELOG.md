@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.0 — 2026-11-23
+
+- Full frontend redesign aligned with `duakelinci.com/en`: official Dua Kelinci crimson (`#D61A21` family) and heritage leaf green (`#1BAB51` / `#0C8037` family) authored in sRGB-clamped OKLCH tokens with P3 enhancement, pill CTAs, `20px` concentric card surfaces with layered shadows, and a two-tier footer pairing CSV cleaning audit stats with the PT Dua Kelinci corporate band.
+- Self-hosted `MontserratVariable.woff2` (SIL OFL) for display headings paired with `InterVariable.woff2` for body copy and `tabular-nums` figures, plus self-hosted Dua Kelinci logos (`logo-dk.png`, `logo-dk-white.png`) — zero external requests.
+- Ringkasan (`/`): new executive hero banner, heritage-green featured total-sales card, top-4 region & brand contribution leaderboards, and a 5-outlet priority watch preview above the Telegram card, "Sekilas" movement card, and interactive all-outlets directory.
+- Wilayah & merek (`/wilayah-merek`): dimension switcher integrated into the hero, accented summary tiles, and an 8-color stacked share composition bar above the full-rupiah table.
+- Outlet terlemah (`/outlet-terlemah`): side-by-side rule/formula and 5-step funnel layout, redesigned diagnostic calculation cards with retention bars, and updated skeletons in `app.js`.
+
 ## 1.4.1 — 2026-11-23
 
 - Status filter: the selected pill now slides to the new option.

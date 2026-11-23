@@ -13,9 +13,9 @@ CSV ──load_sales()──▶ list[Sale] + CleaningReport ──build_report()
 
 | Route | Template | Content |
 |---|---|---|
-| `GET /` | `ringkasan.html` | KPIs, Telegram text with copy buttons, "Sekilas" facts, the all-outlets table (search, filters, sort) |
-| `GET /wilayah-merek?lihat=wilayah\|merek` | `wilayah_merek.html` | A dropdown picks one wide table (region or brand) plus four summary tiles; unknown `lihat` falls back to `wilayah` |
-| `GET /outlet-terlemah` | `outlet_terlemah.html` | The rule and formula, the filtering steps with counts, each result's calculation, and two alternative definitions for comparison (`report.weakest_analysis`) |
+| `GET /` | `ringkasan.html` | Executive hero, KPIs, top region/brand leaderboards, 5-outlet watch preview, Telegram text with copy buttons, "Sekilas" facts, and the all-outlets table (search, filters, sort) |
+| `GET /wilayah-merek?lihat=wilayah\|merek` | `wilayah_merek.html` | Dimension picker in the hero, four summary tiles, stacked share composition bar, and one wide full-rupiah table (region or brand); unknown `lihat` falls back to `wilayah` |
+| `GET /outlet-terlemah` | `outlet_terlemah.html` | Side-by-side rule/formula and 5-step filtering funnel, diagnostic cards with each result's calculation, and two alternative definitions for comparison (`report.weakest_analysis`) |
 
 All three extend `base.html` (top bar, `<main id="isi">`, data notes footer) and import shared macros from `_macros.html` (`pill`, `sort_th`, `page_head`).
 
@@ -27,7 +27,7 @@ All three extend `base.html` (top bar, `<main id="isi">`, data notes footer) and
   - **Router**: intercepts plain left-clicks on same-origin links to the three routes. It marks the nav item, shows a progress bar, fades the old content out (120 ms), shows a page-specific skeleton for at least `MIN_SKELETON_MS` (350 ms, so it never flashes), fetches the target page, swaps `<main>`, updates `document.title`, pushes history, then plays a one-off entrance animation. Focus moves to the new `<h1>`, or the page scrolls to the URL hash. Back/forward use the same path. Any fetch error falls back to a normal full page load.
   - Reduced motion: only opacity changes; the skeleton shimmer and progress animation are off.
 - `asset_url()` (template global in `main.py`) appends the file's modification time to `app.css`/`app.js` URLs so browsers never run a stale copy.
-- The Inter font is self-hosted in `app/static/fonts/`. The app makes no external requests, so the container works offline.
+- `MontserratVariable.woff2` and `InterVariable.woff2` (with SIL OFL licences) sit in `app/static/fonts/`, alongside self-hosted brand logos (`logo-dk.png`, `logo-dk-white.png`). The app makes no external requests, so the container works offline.
 
 ## Endpoints
 
