@@ -81,16 +81,18 @@ def test_wilayah_merek_page_switches_view(client):
 def test_outlet_terlemah_page_shows_calculation(client):
     html = page(client, "/outlet-terlemah")
     for expected in (
+        "Hasil dan hitungannya",
+        'id="weakest-table"',
         "Aturan yang dipakai",
         "Cara menyaring 52 outlet",
         "Keluarkan 1 outlet baru",
         "Keluarkan 13 outlet kecil",
-        "Hasil dan hitungannya",
         "−Rp 6.308.000 ÷ Rp 9.181.700 × 100",  # Minimarket Sido Muncul
         "−68,7%",
         "Kenapa tidak memakai cara lain?",
     ):
         assert expected in html
+    assert html.index('id="weakest-table"') < html.index("Aturan yang dipakai")
 
 
 def test_unknown_page_is_404(client):

@@ -20,6 +20,70 @@
 {% endcall %}
 
 <div class="stack">
+  <section class="card table-section" aria-labelledby="hasil">
+    <div class="card-head">
+      <div>
+        <h2 id="hasil">Hasil dan hitungannya</h2>
+        <p class="card-sub">Penurunan persentase terbesar pada outlet dengan penjualan {{ base|month_short }} minimal {{ min_base|rp }}. Pilih judul kolom untuk mengurutkan.</p>
+      </div>
+    </div>
+    {% if r.weakest %}
+    <div class="table-wrap" role="region" aria-labelledby="hasil" tabindex="0">
+      <table class="data sortable" id="weakest-table">
+        <caption class="sr-only">Daftar {{ r.weakest|length }} outlet terlemah beserta penjualan {{ base|month_label }}, {{ current|month_label }}, selisih, dan hitungannya</caption>
+        <thead>
+          <tr>
+            {{ m.sort_th("Outlet", "text", cls="sticky-col") }}
+            {{ m.sort_th("Cabang & wilayah", "text") }}
+            {{ m.sort_th(base|month_label, "num", cls="num") }}
+            {{ m.sort_th(current|month_label, "num", cls="num") }}
+            {{ m.sort_th("Selisih", "num", cls="num") }}
+            {{ m.sort_th("Perubahan & hitungan", "num", "ascending", "num") }}
+            {{ m.sort_th("Sisa dari " ~ (base|month_short), "num", cls="share-col") }}
+          </tr>
+        </thead>
+        <tbody>
+          {%- for o in r.weakest %}
+          {%- set kept = o.current / o.base * 100 %}
+          <tr>
+            <th scope="row" class="sticky-col" data-value="{{ o.name }}">
+              <div class="weak-outlet">
+                <span class="rank-chip" aria-hidden="true">{{ loop.index }}</span>
+                <div>
+                  <span class="outlet-name">{{ o.name }}</span>
+                  <span class="outlet-id">{{ o.outlet_id }} · {{ o.outlet_type }}</span>
+                </div>
+              </div>
+            </th>
+            <td data-value="{{ o.branch }}">
+              <span class="outlet-name">{{ o.branch }}</span>
+              <span class="outlet-id">{{ o.region }}</span>
+            </td>
+            <td class="num" data-value="{{ o.base }}">{{ o.base|rp }}</td>
+            <td class="num" data-value="{{ o.current }}">{{ o.current|rp }}</td>
+            <td class="num strong" data-value="{{ o.change_idr }}">{{ o.change_idr|rp }}</td>
+            <td class="num" data-value="{{ o.change_pct }}">
+              <div class="calc-cell">
+                {{ m.pill(o.change_pct) }}
+                <span class="calc-sub">{{ o.change_idr|rp }} ÷ {{ o.base|rp }} × 100</span>
+              </div>
+            </td>
+            <td class="share-col" data-value="{{ '%.2f'|format(kept) }}">
+              <span class="share">
+                {{ m.bar(kept if kept < 100 else 100, o.change_pct) }}
+                <span class="num">{{ kept|pct(digits=0, signed=false) }}</span>
+              </span>
+            </td>
+          </tr>
+          {%- endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="muted">Tidak ada outlet yang penjualannya turun dari {{ base|month_short }} ke {{ current|month_short }}.</p>
+    {% endif %}
+  </section>
+
   <div class="method-split">
     <section class="card rule-card" aria-labelledby="aturan">
       <div class="card-head">
@@ -100,41 +164,6 @@
       </ol>
     </section>
   </div>
-
-  <section aria-labelledby="hasil">
-    <div class="section-head">
-      <h2 id="hasil">Hasil dan hitungannya</h2>
-    </div>
-    {% if r.weakest %}
-    <ol class="results">
-      {%- for o in r.weakest %}
-      {%- set kept = o.current / o.base * 100 %}
-      <li class="card result">
-        <div class="result-head">
-          <span class="rank" aria-hidden="true">{{ loop.index }}</span>
-          <div class="who">
-            <h3 class="name">{{ o.name }}</h3>
-            <p class="meta">{{ o.branch }}, {{ o.region }} · {{ o.outlet_type }} · {{ o.outlet_id }}</p>
-          </div>
-          {{ m.pill(o.change_pct) }}
-        </div>
-        <dl class="calc">
-          <div><dt>Penjualan {{ base|month_label }}</dt><dd class="num">{{ o.base|rp }}</dd></div>
-          <div><dt>Penjualan {{ current|month_label }}</dt><dd class="num">{{ o.current|rp }}</dd></div>
-          <div><dt>Selisih</dt><dd class="num">{{ o.change_idr|rp }}</dd></div>
-        </dl>
-        <p class="calc-line"><span class="formula-label">Hitungan</span> {{ o.change_idr|rp }} ÷ {{ o.base|rp }} × 100 = <strong>{{ o.change_pct|pct }}</strong></p>
-        <div class="keep">
-          {{ m.bar(kept if kept < 100 else 100, o.change_pct) }}
-          <span>Penjualan {{ current|month_short }} tinggal <strong>{{ kept|pct(digits=0, signed=false) }}</strong> dari {{ base|month_short }}</span>
-        </div>
-      </li>
-      {%- endfor %}
-    </ol>
-    {% else %}
-    <p class="card">Tidak ada outlet yang penjualannya turun dari {{ base|month_short }} ke {{ current|month_short }}.</p>
-    {% endif %}
-  </section>
 
   <section aria-labelledby="pembanding">
     <div class="section-head">

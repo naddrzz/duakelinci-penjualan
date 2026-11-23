@@ -241,8 +241,9 @@
     "/outlet-terlemah": () =>
       skHero() +
       `<div class="stack">` +
+      skCard(sk("sk-line short") + skRows(6)) +
       skGrid(420, skCard(sk("sk-line short") + sk("sk-area")) + skCard(sk("sk-line short") + skRows(5))) +
-      skGrid(420, skCard(sk("sk-line") + sk("sk-row") + sk("sk-line short")).repeat(4)) +
+      skGrid(420, skCard(sk("sk-line short") + skRows(5)).repeat(2)) +
       `</div>`,
   };
 

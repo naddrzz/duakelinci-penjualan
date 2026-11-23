@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.4 — 2026-11-23
+
+- Outlet terlemah (`/outlet-terlemah`): converted "Hasil dan hitungannya" from multi-card blocks into a sortable full-rupiah table (`#weakest-table`) with inline calculation formulas and remaining-share bars, and moved it to the top of the page above the methodology and 5-step filtering funnel.
+
 ## 1.5.3 — 2026-11-23
 
 - Semantic & neutral bar colors across all three pages: `.bar` now defaults to neutral slate (`--bar-neutral`), while bars paired with growth/decline metrics (`m.bar(width_pct, change)`) render green (`--bar-pos`) for positive growth and red (`--bar-neg`) for declines so positive items never appear in red.
