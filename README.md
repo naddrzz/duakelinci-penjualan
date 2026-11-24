@@ -2,11 +2,11 @@
 
 Three-page FastAPI web app that turns a 15-column sales CSV into a commercial summary with a one-paragraph Telegram update (`/`), sales tables by region, city branch, brand, and salesman (`/wilayah-merek`), and weakest-outlet analysis with SKU and salesman breakdown (`/outlet-terlemah`). All fonts, logos, and icons are bundled locally so the app runs offline.
 
-![Ringkasan penjualan & ringkasan Telegram](docs/screenshots/ringkasan.png)
+![Ringkasan penjualan & ringkasan Telegram](docs/screenshots/ringkasan-penjualan.png)
 
 | Rincian penjualan (Wilayah, Cabang, Merek, Salesman) | Outlet terlemah & panel detail SKU |
 |---|---|
-| ![Rincian penjualan](docs/screenshots/rincian-penjualan.png) | ![Outlet terlemah & panel detail](docs/screenshots/outlet-terlemah-peek.png) |
+| ![Rincian penjualan](docs/screenshots/rincian-penjualan.png) | ![Outlet terlemah & panel detail](docs/screenshots/outlet-terlemah-detail.png) |
 
 ## Run locally
 
