@@ -10,7 +10,7 @@ import math
 import statistics
 
 from .data import UNASSIGNED_SALESMAN, CleaningReport, Sale
-from .formatting import month_short, period_label, pct, rp, rp_short
+from .formatting import NBSP, month_short, period_label, pct, rp, rp_short, rp_tg
 
 UNASSIGNED_LABEL = "Belum tercatat"
 
@@ -231,25 +231,54 @@ def _build_salesman_drop_note(sm_list: list[dict], outlet_change_idr: int) -> st
     if len(sm_list) == 1:
         only = sm_list[0]
         if only["base"] > 0 and only["current"] <= 0:
-            return f"{only['name']} berhenti order ({rp_short(only['base'])} → {rp(only['current'])})"
-        return f"{only['name']} {rp_short(only['change_idr'])}"
+            return f"berhenti order dari {rp_short(only['base'])}"
+        return ""
 
     by_drop = sorted(sm_list, key=lambda s: (s["change_idr"], s["change_pct"] or 0))
     worst = by_drop[0]
     if worst["change_idr"] >= 0:
         return ""
     if worst["base"] > 0 and worst["current"] <= 0:
-        return f"{worst['name']} berhenti order ({rp_short(worst['base'])} → {rp(worst['current'])})"
+        return f"{worst['name']} berhenti order dari {rp_short(worst['base'])}"
 
     others_up = any(s["change_idr"] >= 0 for s in by_drop[1:])
     dominant = abs(worst["change_idr"]) >= 0.65 * abs(outlet_change_idr)
     if others_up or dominant:
         pct_part = f" ({pct(worst['change_pct'], digits=0)})" if worst["change_pct"] is not None else ""
-        return f"drop utama {worst['name']} {rp_short(worst['change_idr'])}{pct_part}"
+        return f"{worst['name']} turun {rp_short(abs(worst['change_idr']))}{pct_part}"
 
     return ", ".join(
         f"{s['name']} {rp_short(s['change_idr'])}" for s in by_drop[:2] if s["change_idr"] < 0
     )
+
+
+def _tg_salesman_line(o: dict) -> str:
+    """Format the salesman attribution line for a declining outlet block in Telegram."""
+    sm_list = o["salesmen"]
+    if not sm_list:
+        return f"Sales {o['salesman']}"
+    if len(sm_list) == 1:
+        only = sm_list[0]
+        if only["base"] > 0 and only["current"] <= 0:
+            return f"Sales {o['salesman']} (berhenti order dari {rp_tg(only['base'])})"
+        return f"Sales {o['salesman']}"
+
+    by_drop = sorted(sm_list, key=lambda s: (s["change_idr"], s["change_pct"] or 0))
+    worst = by_drop[0]
+    if worst["change_idr"] >= 0:
+        return f"Sales {o['salesman']}"
+    if worst["base"] > 0 and worst["current"] <= 0:
+        return f"Sales {o['salesman']} ({worst['name']} berhenti order dari {rp_tg(worst['base'])})"
+
+    others_up = any(s["change_idr"] >= 0 for s in by_drop[1:])
+    dominant = abs(worst["change_idr"]) >= 0.65 * abs(o["change_idr"])
+    if others_up or dominant:
+        return f"Sales {o['salesman']} ({worst['name']} turun {rp_tg(abs(worst['change_idr']))})"
+
+    detail = ", ".join(
+        f"{s['name']} {rp_tg(s['change_idr'])}" for s in by_drop[:2] if s["change_idr"] < 0
+    )
+    return f"Sales {o['salesman']} ({detail})" if detail else f"Sales {o['salesman']}"
 
 
 def outlet_table(rows: list[Sale], base: str, current: str) -> list[dict]:
@@ -501,9 +530,9 @@ def weakest_analysis(outlets: list[dict], min_base_idr: int, count: int) -> dict
 def telegram_summary(report: dict) -> str:
     """Chat-first executive pulse for Telegram (Bahasa Indonesia).
 
-    Follows asymmetric detail: concise headline & region/branch/brand/salesman highs
-    and lows up top, then deeper operational context (outlet_id, branch, region,
-    invoices, and responsible salesman drop breakdown) on declines.
+    Uses Telegram client-side `**bold**` anchors, tap-to-copy `` `OUTxxxx` `` badges,
+    EYD V tight `Rp` with `U+00A0` non-breaking unit spaces, and short stacked lines
+    separated by blank lines so mobile and desktop chat bubbles scan cleanly.
     """
     base, current = report["period"]["base"], report["period"]["current"]
     b_lbl, c_lbl = month_short(base), month_short(current)
@@ -527,83 +556,125 @@ def telegram_summary(report: dict) -> str:
         trend = f"{'naik' if change > 0 else 'turun'} {pct(abs(change), signed=False)}"
 
     reg_branches_str = " · ".join(
-        f"{b['name']} {rp_short(b['total'])}" for b in best_reg["branches"]
+        f"{b['name']} {rp_tg(b['total'])}" for b in best_reg["branches"]
     )
 
     lines = [
-        f"Ringkasan Penjualan Dua Kelinci — {report['period']['label']}",
+        "**Laporan Penjualan Dua Kelinci**",
+        f"Periode {report['period']['label']}",
         "",
-        f"Total penjualan bersih: {rp_short(totals['net'])} ({trend})",
-        f"• Perbandingan: {b_lbl} {rp_short(totals['by_month'][base])} → {c_lbl} {rp_short(totals['by_month'][current])}",
-        f"• Wilayah terbaik: {best_reg['name']} — {rp_short(best_reg['total'])} ({pct(best_reg['share_pct'], signed=False)} dari total)",
-        f"  ↳ Cabang kota: {reg_branches_str}",
-        f"• Cabang tertinggi: {best_br['name']} ({best_br['region']}) — {rp_short(best_br['total'])} ({pct(best_br['share_pct'], signed=False)})",
-        f"• Merek terbaik: {best_brand['name']} — {rp_short(best_brand['total'])} ({pct(best_brand['share_pct'], signed=False)} dari total)",
+        "**Capaian Utama**",
+        f"Omzet bersih **{rp_tg(totals['net'])}** ({trend})",
+        f"{b_lbl} {rp_tg(totals['by_month'][base])} → {c_lbl} {rp_tg(totals['by_month'][current])}",
+        "",
+        f"• Wilayah #1: **{best_reg['name']}**",
+        f"  {rp_tg(best_reg['total'])} ({pct(best_reg['share_pct'], signed=False)})",
+        f"  {reg_branches_str}",
     ]
+    if best_br["region"] != best_reg["name"]:
+        lines.extend([
+            "",
+            f"• Kota #1: **{best_br['name']}** ({best_br['region']})",
+            f"  {rp_tg(best_br['total'])} ({pct(best_br['share_pct'], signed=False)})",
+        ])
+    lines.extend([
+        "",
+        f"• Merek #1: **{best_brand['name']}**",
+        f"  {rp_tg(best_brand['total'])} ({pct(best_brand['share_pct'], signed=False)})",
+    ])
     if best_sm:
-        sm_trend = f" · {pct(best_sm['change_pct'], digits=0)}" if best_sm["change_pct"] is not None else ""
-        lines.append(
-            f"• Salesman tertinggi: {best_sm['name']} ({best_sm['branch']}, {best_sm['region']}) — {rp_short(best_sm['total'])}{sm_trend}"
-        )
+        sm_trend = f" ({pct(best_sm['change_pct'], digits=0)})" if best_sm["change_pct"] is not None else ""
+        lines.extend([
+            "",
+            f"• Sales #1: **{best_sm['name']}** · {best_sm['branch']}",
+            f"  {rp_tg(best_sm['total'])}{sm_trend}",
+        ])
 
     lines.extend([
         "",
-        "Penjualan tertinggi & terendah:",
-        f"• Outlet tertinggi: [{hi_out['outlet_id']}] {hi_out['name']}, {hi_out['branch']} ({hi_out['region']}) — {rp_short(hi_out['total'])} (Sales: {hi_out['salesman']})",
-        f"• Outlet terendah: [{lo_out['outlet_id']}] {lo_out['name']}, {lo_out['branch']} ({lo_out['region']}) — {rp_short(lo_out['total'])} (Sales: {lo_out['salesman']})",
-        f"• Wilayah & cabang terendah: {lo_reg['name']} ({rp_short(lo_reg['total'])}) · {lo_br['name']} ({rp_short(lo_br['total'])})",
+        "**Rentang Tertinggi & Terendah**",
+        "",
+        f"• Toko tertinggi: **{hi_out['name']}** `{hi_out['outlet_id']}` · {hi_out['branch']}",
+        f"  {rp_tg(hi_out['total'])}",
+        f"  Sales {hi_out['salesman']}",
+        "",
+        f"• Toko terendah: **{lo_out['name']}** `{lo_out['outlet_id']}` · {lo_out['branch']}",
+        f"  {rp_tg(lo_out['total'])}",
+        f"  Sales {lo_out['salesman']}",
+        "",
+        "• Wilayah & kota terendah",
+        f"  Wilayah {lo_reg['name']} · {rp_tg(lo_reg['total'])}",
+        f"  Kota {lo_br['name']} · {rp_tg(lo_br['total'])}",
+        "",
     ])
     if lo_sm:
-        lines.append(
-            f"• Merek & salesman terendah: {lo_brand['name']} ({rp_short(lo_brand['total'])}) · {lo_sm['name']}, {lo_sm['branch']} ({rp_short(lo_sm['total'])})"
-        )
+        lines.extend([
+            "• Merek & sales terendah",
+            f"  Merek {lo_brand['name']} · {rp_tg(lo_brand['total'])}",
+            f"  Sales {lo_sm['name']} ({lo_sm['branch']}) · {rp_tg(lo_sm['total'])}",
+        ])
     else:
-        lines.append(f"• Merek terendah: {lo_brand['name']} ({rp_short(lo_brand['total'])})")
+        lines.extend([
+            "• Merek terendah",
+            f"  Merek {lo_brand['name']} · {rp_tg(lo_brand['total'])}",
+        ])
 
-    lines.append("")
     weakest = report["weakest"]
     rev_risk = report["weakest_analysis"]["revenue_at_risk"]
     if weakest:
-        lines.append(
-            f"Evaluasi penurunan — {len(weakest)} outlet melemah terdalam ({b_lbl} → {c_lbl}):"
-        )
+        lines.extend([
+            "",
+            f"**{len(weakest)} Outlet Turun Terdalam ({b_lbl} → {c_lbl})**",
+        ])
         for idx, o in enumerate(weakest, start=1):
-            drop_detail = f" — {o['salesman_drop_note']}" if o["salesman_drop_note"] else ""
-            lines.append(
-                f"{idx}. [{o['outlet_id']}] {o['name']}, {o['branch']} ({o['region']}) — "
-                f"{rp_short(o['base'])} → {rp_short(o['current'])} ({pct(o['change_pct'], digits=0)} · {rp_short(o['change_idr'])})"
-            )
-            lines.append(
-                f"   {o['base_invoices']}→{o['current_invoices']} faktur · Sales: {o['salesman']}{drop_detail}"
-            )
+            lines.extend([
+                "",
+                f"{idx}. **{o['name']}** `{o['outlet_id']}` · {o['branch']}",
+                f"   {rp_tg(o['base'])} → {rp_tg(o['current'])} (**{pct(o['change_pct'], digits=0)}** · {rp_tg(o['change_idr'])})",
+                f"   {o['base_invoices']}→{o['current_invoices']}{NBSP}faktur",
+                f"   {_tg_salesman_line(o)}",
+            ])
         weak_ids = {o["outlet_id"] for o in weakest}
         extra_big_drops = [o for o in rev_risk[:3] if o["outlet_id"] not in weak_ids]
-        if extra_big_drops:
-            lines.append("")
-            lines.append("Penurunan rupiah terbesar (akun besar):")
-            for o in extra_big_drops:
-                drop_detail = f" — {o['salesman_drop_note']}" if o["salesman_drop_note"] else ""
-                lines.append(
-                    f"• [{o['outlet_id']}] {o['name']}, {o['branch']} ({o['region']}): "
-                    f"{rp_short(o['change_idr'])} ({pct(o['change_pct'], digits=0)} · {o['base_invoices']}→{o['current_invoices']} faktur · Sales: {o['salesman']}{drop_detail})"
-                )
         steep_sm = ext.get("steepest_drop_salesman")
-        if steep_sm and steep_sm["change_idr"] < 0:
-            lines.append(
-                f"• Salesman kontraksi terdalam: {steep_sm['name']}, {steep_sm['branch']} ({pct(steep_sm['change_pct'], digits=0)} · {rp_short(steep_sm['change_idr'])})"
-            )
+        has_steep_sm = bool(steep_sm and steep_sm["change_idr"] < 0)
+        if extra_big_drops or has_steep_sm:
+            lines.extend([
+                "",
+                "**Akun Besar Turun Rupiah Terbesar**" if extra_big_drops else "**Catatan Penurunan Salesman**",
+            ])
+            for o in extra_big_drops:
+                lines.extend([
+                    "",
+                    f"• **{o['name']}** `{o['outlet_id']}` · {o['branch']}",
+                    f"  {rp_tg(o['base'])} → {rp_tg(o['current'])} (**{rp_tg(o['change_idr'])}** · {pct(o['change_pct'], digits=0)})",
+                    f"  {o['base_invoices']}→{o['current_invoices']}{NBSP}faktur",
+                    f"  {_tg_salesman_line(o)}",
+                ])
+            if has_steep_sm:
+                lines.extend([
+                    "",
+                    f"• Sales turun terdalam: **{steep_sm['name']}** · {steep_sm['branch']}",
+                    f"  {rp_tg(steep_sm['by_month'][base])} → {rp_tg(steep_sm['by_month'][current])} (**{pct(steep_sm['change_pct'], digits=0)}** · {rp_tg(steep_sm['change_idr'])})",
+                ])
     elif rev_risk:
-        lines.append(
-            f"Outlet dengan penurunan penjualan ({b_lbl} → {c_lbl}):"
-        )
+        lines.extend([
+            "",
+            f"**Outlet Turun Penjualan ({b_lbl} → {c_lbl})**",
+        ])
         for idx, o in enumerate(rev_risk, start=1):
-            drop_detail = f" ({o['salesman_drop_note']})" if o["salesman_drop_note"] else ""
-            lines.append(
-                f"{idx}. [{o['outlet_id']}] {o['name']}, {o['branch']} ({o['region']}) — "
-                f"{pct(o['change_pct'], digits=0)} · {rp_short(o['change_idr'])} · Sales: {o['salesman']}{drop_detail}"
-            )
+            lines.extend([
+                "",
+                f"{idx}. **{o['name']}** `{o['outlet_id']}` · {o['branch']}",
+                f"   {rp_tg(o['base'])} → {rp_tg(o['current'])} (**{pct(o['change_pct'], digits=0)}** · {rp_tg(o['change_idr'])})",
+                f"   {o['base_invoices']}→{o['current_invoices']}{NBSP}faktur",
+                f"   {_tg_salesman_line(o)}",
+            ])
     else:
-        lines.append(f"Tidak ada outlet yang turun dari {b_lbl} ke {c_lbl}.")
+        lines.extend([
+            "",
+            f"Tidak ada outlet yang turun dari {b_lbl} ke {c_lbl}.",
+        ])
     return "\n".join(lines)
 
 

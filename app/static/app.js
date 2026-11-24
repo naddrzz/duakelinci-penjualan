@@ -45,8 +45,14 @@
           }
           say("Tersalin ke clipboard.", true);
         } catch {
-          text.focus();
-          text.select();
+          const preview = root.querySelector("[data-tg-preview]");
+          if (preview && window.getSelection) {
+            preview.focus();
+            window.getSelection().selectAllChildren(preview);
+          } else {
+            text.focus();
+            text.select();
+          }
           say("Teks dipilih — tekan Ctrl+C.", false);
         }
       });

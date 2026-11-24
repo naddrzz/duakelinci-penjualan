@@ -474,12 +474,22 @@
         </div>
       </section>
 
-      <pre hidden data-peek-copy-source>[{{ o.outlet_id }}] {{ o.name }} ({{ o.outlet_type }} · {{ o.branch }}, {{ o.region }})
-• Perubahan {{ base|month_short }} → {{ current|month_short }}: {{ o.base|rp }} → {{ o.current|rp }} ({{ o.change_idr|rp }} / {{ o.change_pct|pct if o.change_pct is not none else "—" }})
-• Aktivitas: {{ o.base_invoices }} → {{ o.current_invoices }} faktur · {{ o.base_cartons }} → {{ o.current_cartons }} karton · {{ o.base_skus }} → {{ o.current_skus }} SKU{% if o.last_order_date %} · Order terakhir {{ o.last_order_date|date_id }} ({{ o.last_order_salesman }}){% endif %}
-{% if stopped_skus %}• SKU Berhenti ({{ stopped_skus|length }}): {% for s in stopped_skus %}{{ s.sku }} ({{ s.base_cartons }}→0 krt, {{ s.change_idr|rp_short }}){% if not loop.last %}, {% endif %}{% endfor %}
-{% endif %}{% if running_skus %}• SKU Jalan ({{ running_skus|length }}): {% for s in running_skus %}{{ s.sku }} ({{ s.base_cartons }}→{{ s.current_cartons }} krt, {% if s.change_idr > 0 %}+{% endif %}{{ s.change_idr|rp_short }}){% if not loop.last %}, {% endif %}{% endfor %}
-{% endif %}• Salesman: {% for sm in sm_sorted %}{{ sm.name }} ({{ sm.base|rp_short }} → {{ sm.current|rp_short }}, {% if sm.change_idr > 0 %}+{% endif %}{{ sm.change_idr|rp_short }}){% if not loop.last %}; {% endif %}{% endfor %}</pre>
+      <pre hidden data-peek-copy-source>**{{ o.name }}** `{{ o.outlet_id }}` · {{ o.branch }} ({{ o.outlet_type }})
+{{ o.base|rp_tg }} → {{ o.current|rp_tg }} (**{{ o.change_pct|pct(digits=0) if o.change_pct is not none else "—" }}** · {{ o.change_idr|rp_tg }})
+{{ o.base_invoices }}→{{ o.current_invoices }}&#160;faktur · {{ o.base_cartons }}→{{ o.current_cartons }}&#160;karton · {{ o.base_skus }}→{{ o.current_skus }}&#160;SKU{% if o.last_order_date %}
+Order terakhir {{ o.last_order_date|date_id }} ({{ o.last_order_salesman }}){% endif %}
+{% if stopped_skus %}
+**SKU Berhenti ({{ stopped_skus|length }})**
+{%- for s in stopped_skus %}
+• {{ s.sku }} ({{ s.base_cartons }}→0&#160;krt · {{ s.change_idr|rp_tg }}){% endfor %}
+{% endif %}{% if running_skus %}
+**SKU Jalan ({{ running_skus|length }})**
+{%- for s in running_skus %}
+• {{ s.sku }} ({{ s.base_cartons }}→{{ s.current_cartons }}&#160;krt · {% if s.change_idr > 0 %}+{% endif %}{{ s.change_idr|rp_tg }}){% endfor %}
+{% endif %}
+**Salesman**
+{%- for sm in sm_sorted %}
+• {{ sm.name }}: {{ sm.base|rp_tg }} → {{ sm.current|rp_tg }} ({% if sm.change_idr > 0 %}+{% endif %}{{ sm.change_idr|rp_tg }}){% endfor %}</pre>
     </article>
     {%- endfor %}
   </div>

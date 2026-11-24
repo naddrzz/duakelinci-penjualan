@@ -4,7 +4,7 @@ If the data file changes, update them together with docs/metrics.md."""
 import pytest
 
 from app.analysis import adaptive_base_floor, change_pct, weakest_analysis, weakest_outlets
-from app.formatting import date_id, pct, period_label, rp, rp_short
+from app.formatting import NBSP, date_id, pct, period_label, rp, rp_short, rp_tg, tg_preview_html
 
 
 def test_totals(report):
@@ -150,28 +150,53 @@ def test_change_pct_without_base():
 
 def test_telegram_summary(report):
     text = report["telegram_summary"]
-    assert text.count("\n") >= 20
+    assert text.startswith("**Laporan Penjualan Dua Kelinci**\nPeriode Sep–Okt 2026")
+    assert text.count("\n") >= 40
     assert len(text) < 4096  # fits inside a single Telegram message
     for expected in (
-        "Ringkasan Penjualan Dua Kelinci — Sep–Okt 2026",
-        "Total penjualan bersih: Rp 1,73 miliar (naik 3,6%)",
-        "Sep Rp 847,5 jt → Okt Rp 878,4 jt",
-        "Wilayah terbaik: Jabodetabek — Rp 495,8 jt (28,7% dari total)",
-        "Cabang kota: Tangerang Rp 249,0 jt · Jakarta Barat Rp 168,8 jt · Bekasi Rp 78,0 jt",
-        "Cabang tertinggi: Tangerang (Jabodetabek) — Rp 249,0 jt",
-        "Merek terbaik: Kacang Dua Kelinci — Rp 739,8 jt (42,9% dari total)",
-        "Salesman tertinggi: Citra (Tangerang, Jabodetabek) — Rp 136,6 jt",
-        "Outlet tertinggi: [OUT1007] Grosir Harapan Baru, Tangerang",
-        "Outlet terendah: [OUT1003] Toko Sinar Abadi, Jakarta Barat",
-        "Wilayah & cabang terendah: Kalimantan (Rp 144,2 jt) · Banjarmasin (Rp 32,0 jt)",
-        "Merek & salesman terendah: Roni (Rp 34,4 jt) · Bayu, Banjarmasin (Rp 13,1 jt)",
-        "1. [OUT1043] Minimarket Sido Muncul, Palembang (Sumatera)",
-        "Sales: Zaki, Yudi — drop utama Zaki",
-        "5. [OUT1001] Toko Sinar Abadi, Jakarta Barat (Jabodetabek)",
-        "[OUT1014] Grosir Sentosa, Bandung (Jawa Barat): −Rp 31,6 jt",
-        "drop utama Gita",
+        f"Omzet bersih **Rp1,73{NBSP}miliar** (naik 3,6%)",
+        f"Sep Rp847,5{NBSP}jt → Okt Rp878,4{NBSP}jt",
+        "• Wilayah #1: **Jabodetabek**",
+        f"  Rp495,8{NBSP}jt (28,7%)",
+        f"  Tangerang Rp249,0{NBSP}jt · Jakarta Barat Rp168,8{NBSP}jt · Bekasi Rp78,0{NBSP}jt",
+        "• Merek #1: **Kacang Dua Kelinci**",
+        f"  Rp739,8{NBSP}jt (42,9%)",
+        "• Sales #1: **Citra** · Tangerang",
+        f"  Rp136,6{NBSP}jt (+17%)",
+        "**Rentang Tertinggi & Terendah**",
+        "• Toko tertinggi: **Grosir Harapan Baru** `OUT1007` · Tangerang",
+        f"  Rp190,5{NBSP}jt\n  Sales Citra, Dedi",
+        "• Toko terendah: **Toko Sinar Abadi** `OUT1003` · Jakarta Barat",
+        f"  Rp564{NBSP}rb\n  Sales Andi, Budi",
+        f"  Wilayah Kalimantan · Rp144,2{NBSP}jt\n  Kota Banjarmasin · Rp32,0{NBSP}jt",
+        f"  Merek Roni · Rp34,4{NBSP}jt\n  Sales Bayu (Banjarmasin) · Rp13,1{NBSP}jt",
+        "**5 Outlet Turun Terdalam (Sep → Okt)**",
+        "1. **Minimarket Sido Muncul** `OUT1043` · Palembang",
+        f"   Rp9,2{NBSP}jt → Rp2,9{NBSP}jt (**−69%** · −Rp6,3{NBSP}jt)",
+        f"   5→3{NBSP}faktur\n   Sales Zaki, Yudi (Zaki turun Rp6,8{NBSP}jt)",
+        f"4. **Toko Mekar** `OUT1048` · Banjarmasin",
+        f"   Sales Bayu, Agus (Agus berhenti order dari Rp1,5{NBSP}jt)",
+        "5. **Toko Sinar Abadi** `OUT1001` · Jakarta Barat",
+        "**Akun Besar Turun Rupiah Terbesar**",
+        "• **Grosir Sentosa** `OUT1014` · Bandung",
+        f"  Sales Gita, Hendra (Gita turun Rp37,6{NBSP}jt)",
+        "• Sales turun terdalam: **Teguh** · Medan",
     ):
         assert expected in text
+    assert "dari total" not in text
+    assert "Perbandingan:" not in text
+    assert "drop utama" not in text
+
+
+def test_rp_tg_and_preview_xss_safety():
+    assert rp_tg(1_725_966_000) == f"Rp1,73{NBSP}miliar"
+    assert rp_tg(-6_308_000) == f"−Rp6,3{NBSP}jt"
+    assert rp_tg(564_000) == f"Rp564{NBSP}rb"
+    assert rp_tg(950) == "Rp950"
+    rendered = str(tg_preview_html("**Toko <script>x</script>** `OUT1`"))
+    assert "<strong>Toko &lt;script&gt;x&lt;/script&gt;</strong>" in rendered
+    assert '<code class="tg-code">OUT1</code>' in rendered
+    assert "<script>" not in rendered
 
 
 @pytest.mark.parametrize(

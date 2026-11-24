@@ -39,34 +39,35 @@ Full primary-source justification lives in [research-weakest-outlet-and-telegram
 | 4 | OUT1048 Toko Mekar | Banjarmasin | 5→3 inv · 8→3 SKU | 5.143.700 | 2.473.900 | −51,9 % |
 | 5 | OUT1001 Toko Sinar Abadi | Jakarta Barat | 6→3 inv · 9→7 SKU | 6.929.900 | 3.579.000 | −48,4 % |
 
-## 3. Telegram summary (Chat-First Asymmetric Briefing)
+## 3. Telegram summary (Chat-First Stacked Briefing — EYD V & Native Entities)
 
-Designed as the primary daily/period pulse read on mobile before a manager opens the web app (`telegram_summary()`):
-- **Concise on positive & macro standing**: period total, `Sep → Okt` movement, best **Region** (`Jabodetabek`) with its **city branch breakdown** (`Tangerang`, `Jakarta Barat`, `Bekasi`) and top **Branch** overall, best **Brand**, best **Salesman**, plus **Highest vs Lowest Sales** (`[OUT1007] Grosir Harapan Baru` `Rp 190,5 jt` vs `[OUT1003] Toko Sinar Abadi` `Rp 564 rb`, lowest region/branch, lowest brand/salesman).
-- **Deep & actionable on declines**: every declining outlet includes `[outlet_id]`, city branch & region, `Sep → Okt` rupiah & `%`, invoice movement (`base→current faktur`), assigned **Salesmen**, and **which salesman drove the drop** (`salesman_drop_note`), followed by key-account rupiah drops and steepest-contracting salesman.
+Full primary-source research on Telegram client paste mechanics (`**bold**` & tap-to-copy `` `code` `` entities, `U+00A0` non-breaking unit glue) and Indonesian readability (`EYD V`, *Narabahasa*, Indonesian UX Writing) lives in [research-telegram-formatting-and-bahasa-indonesia.md](research-telegram-formatting-and-bahasa-indonesia.md).
+
+Designed for effortless 5-second mobile & desktop scanning inside Telegram chat bubbles (`telegram_summary()`):
+- **Telegram-native hierarchy**: `**...**` converts into native `messageEntityBold` on paste/send across Telegram Desktop, Android, and iOS; `` `OUTxxxx` `` converts into a tap-to-copy `messageEntityCode` badge so managers can tap any outlet code to copy it straight into the dashboard search bar.
+- **EYD V tight `Rp` + `U+00A0` unit glue (`rp_tg`)**: formats compact amounts as `Rp1,73\u00A0miliar`, `Rp847,5\u00A0jt`, `−Rp6,3\u00A0jt` so neither `Rp` nor `jt`/`rb` ever breaks onto an orphan line on narrow mobile screens.
+- **Stacked short micro-lines & natural Bahasa Indonesia**: separates each item by a blank line and gives each semantic facet (store + ID + city, amount + `%`, invoice count, salesman + drop driver) its own short line without meta-labels (`Perbandingan:`) or repetitive `dari total`.
 
 Sample output:
 
 ```text
-Ringkasan Penjualan Dua Kelinci — Sep–Okt 2026
+**Laporan Penjualan Dua Kelinci**
+Periode Sep–Okt 2026
 
-Total penjualan bersih: Rp 1,73 miliar (naik 3,6%)
-• Perbandingan: Sep Rp 847,5 jt → Okt Rp 878,4 jt
-• Wilayah terbaik: Jabodetabek — Rp 495,8 jt (28,7% dari total)
-  ↳ Cabang kota: Tangerang Rp 249,0 jt · Jakarta Barat Rp 168,8 jt · Bekasi Rp 78,0 jt
-• Cabang tertinggi: Tangerang (Jabodetabek) — Rp 249,0 jt (14,4%)
-• Merek terbaik: Kacang Dua Kelinci — Rp 739,8 jt (42,9% dari total)
-• Salesman tertinggi: Citra (Tangerang, Jabodetabek) — Rp 136,6 jt · +17%
+**Capaian Utama**
+Omzet bersih **Rp1,73 miliar** (naik 3,6%)
+Sep Rp847,5 jt → Okt Rp878,4 jt
 
-Penjualan tertinggi & terendah:
-• Outlet tertinggi: [OUT1007] Grosir Harapan Baru, Tangerang (Jabodetabek) — Rp 190,5 jt (Sales: Citra, Dedi)
-• Outlet terendah: [OUT1003] Toko Sinar Abadi, Jakarta Barat (Jabodetabek) — Rp 564 rb (Sales: Andi, Budi)
-• Wilayah & cabang terendah: Kalimantan (Rp 144,2 jt) · Banjarmasin (Rp 32,0 jt)
-• Merek & salesman terendah: Roni (Rp 34,4 jt) · Bayu, Banjarmasin (Rp 13,1 jt)
+• Wilayah #1: **Jabodetabek**
+  Rp495,8 jt (28,7%)
+  Tangerang Rp249,0 jt · Jakarta Barat Rp168,8 jt · Bekasi Rp78,0 jt
+...
+**5 Outlet Turun Terdalam (Sep → Okt)**
 
-Evaluasi penurunan — 5 outlet melemah terdalam (Sep → Okt):
-1. [OUT1043] Minimarket Sido Muncul, Palembang (Sumatera) — Rp 9,2 jt → Rp 2,9 jt (−69% · −Rp 6,3 jt)
-   5→3 faktur · Sales: Zaki, Yudi — drop utama Zaki −Rp 6,8 jt (−96%)
+1. **Minimarket Sido Muncul** `OUT1043` · Palembang
+   Rp9,2 jt → Rp2,9 jt (**−69%** · −Rp6,3 jt)
+   5→3 faktur
+   Sales Zaki, Yudi (Zaki turun Rp6,8 jt)
 ...
 ```
 

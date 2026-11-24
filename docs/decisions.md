@@ -2,6 +2,12 @@
 
 Newest first. Each entry: what was decided, why, and what would make us revisit it.
 
+## 2026-11-24 — Stacked Telegram formatting (`**bold**`, tap-to-copy `` `OUTxxxx` ``, EYD V `Rp` + `U+00A0`) & natural Indonesian microcopy (requested & paste-tested by the user)
+
+- **Native client-side entities over flat plain text**: real paste testing in Telegram Desktop and Android showed that flat weight and >100-character lines created an exhausting wall of wrapped text with orphaned `Rp` and `jt` fragments. Using `**...**` (`messageEntityBold`) on section headers, store names, and key deltas plus `` `OUTxxxx` `` (`messageEntityCode`, enabling 1-tap clipboard copy in Telegram) provides clear visual hierarchy across Desktop, Android, and iOS while keeping `<div class="tg-doc" data-tg-preview>` rendered cleanly without raw asterisks on the web dashboard.
+- **EYD V currency spelling + `U+00A0` non-breaking unit glue (`rp_tg`)**: attaching `Rp` directly to digits (`Rp847,5\u00A0jt`, `−Rp6,3\u00A0jt`) per EYD Edisi V Bab II.F.5 & II.G.3 and binding compact units (`rb`, `jt`, `miliar`, `faktur`) with `U+00A0` eliminates orphaned currency prefixes and unit suffixes on narrow mobile chat bubbles.
+- **Stacked 1-facet-per-line cards & lugas Bahasa Indonesia**: each bullet/numbered item places store + ID + city, rupiah/percent movement, invoice cadence, and salesman attribution on dedicated short lines separated by blank lines, replacing stiff nominal translations (*"Salesman kontraksi terdalam"*, *"drop utama"*, *"Perbandingan:"*, repeated *"dari total"*) with concise everyday commercial Indonesian (*"Sales turun terdalam"*, *"Zaki turun Rp6,8 jt"*). Full citations in [research-telegram-formatting-and-bahasa-indonesia.md](research-telegram-formatting-and-bahasa-indonesia.md).
+
 ## 2026-11-23 — Single-line structured tables & Notion-style Right Side Peek on `/outlet-terlemah` (researched via Mobbin, drafted in Wonder & approved by the user)
 
 - **Keeping tables scannable without losing deep field diagnostics**: cramming outlet codes, store types, invoice/SKU cadence (`5→3 faktur · 9→5 SKU`), salesman drop notes, and division formulas underneath table cells pushed minimum table width past `~1 080px` and triggered horizontal scrollbars on `1280px–1366px` laptops. Stripping secondary cell sub-lines keeps every table across `/`, `/wilayah-merek` (**Rincian penjualan**), and `/outlet-terlemah` single-line and 100% fit on laptop viewports without horizontal thin scrollbars.

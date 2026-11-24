@@ -94,7 +94,8 @@
         </div>
       </div>
       <label for="tg" class="sr-only">Teks ringkasan siap tempel untuk Telegram (tidak dikirim otomatis)</label>
-      <textarea id="tg" class="field tg-doc" readonly spellcheck="false">{{ r.telegram_summary }}</textarea>
+      <textarea id="tg" class="sr-only" readonly tabindex="-1">{{ r.telegram_summary }}</textarea>
+      <div class="tg-doc" data-tg-preview role="region" aria-labelledby="telegram" tabindex="0">{{ r.telegram_summary|tg_preview }}</div>
     </section>
 
     <section class="clean-section" aria-labelledby="sorotan-lemah">

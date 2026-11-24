@@ -13,7 +13,7 @@ UI copy and Telegram text are **Bahasa Indonesia**; code, identifiers, commits, 
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest                                  # 42 tests; must be green before finishing
+python -m pytest                                  # 43 tests; must be green before finishing
 uvicorn app.main:app --reload                     # http://127.0.0.1:8000
 docker compose up -d --build                      # or: docker build -t dua-kelinci-sales . && docker run --rm -p 8000:8000 dua-kelinci-sales
 ```

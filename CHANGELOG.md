@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.0 — 2026-11-24
+
+- **Redesigned Telegram executive summary & natural Bahasa Indonesia microcopy** (`app/analysis.py`, `app/formatting.py`, `ringkasan.html`, `outlet_terlemah.html`):
+  - Replaced flat, long-line plain text with stacked short-line cards using Telegram client-side **`**bold**`** hierarchy and one-tap copyable **`` `OUTxxxx` ``** monospace outlet badges across **Capaian Utama**, **Rentang Tertinggi & Terendah**, **Outlet Turun Terdalam**, and **Akun Besar Turun Rupiah Terbesar**.
+  - Added `rp_tg()` following **EYD Edisi V** (`Rp` attached without space + `U+00A0` non-breaking space before `rb`/`jt`/`miliar`) so currency prefixes and units never orphan-wrap in mobile chat bubbles, and replaced stiff translationese (*"Salesman kontraksi terdalam"*, *"drop utama"*, *"Perbandingan:"*, repeated *"dari total"*) with concise Indonesian commercial phrasing.
+  - Added safe HTML preview rendering (`tg_preview_html` / `div.tg-doc[data-tg-preview]`) on `/` so the web dashboard displays formatted bold text and monospace code pills without raw Markdown asterisks while keeping one-click raw Telegram copy (`#tg`) and Side Peek `Salin detail` intact.
+
 ## 2.0.0 — 2026-11-23
 
 - **Quiet architectural UI redesign & structured Tabbed Data Table** (approved from Wonder draft in workspace `insan-khamil` + follow-up table refinement):

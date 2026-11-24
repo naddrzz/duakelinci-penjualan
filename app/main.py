@@ -17,7 +17,7 @@ from fastapi.templating import Jinja2Templates
 from . import config
 from .analysis import build_report
 from .data import REQUIRED_COLUMNS, load_sales, load_sales_text
-from .formatting import date_id, month_label, month_short, pct, rp, rp_short
+from .formatting import date_id, month_label, month_short, pct, rp, rp_short, rp_tg, tg_preview_html
 
 # Guarantee deterministic MIME headers even in minimal slim containers without /etc/mime.types.
 for _mime, _ext in (
@@ -36,7 +36,14 @@ SAFE_PATHS = {"/", "/wilayah-merek", "/outlet-terlemah"}
 
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 templates.env.filters.update(
-    rp=rp, rp_short=rp_short, pct=pct, month_label=month_label, month_short=month_short, date_id=date_id
+    rp=rp,
+    rp_short=rp_short,
+    rp_tg=rp_tg,
+    tg_preview=tg_preview_html,
+    pct=pct,
+    month_label=month_label,
+    month_short=month_short,
+    date_id=date_id,
 )
 templates.env.globals["required_columns"] = REQUIRED_COLUMNS
 
