@@ -1,77 +1,53 @@
 # Dua Kelinci Sales Dashboard
 
-Three-page FastAPI web dashboard that turns a 15-column sales CSV into an executive summary with a copy-ready Telegram briefing (`/`), 4-dimension sales tables across region, city branch, brand, and salesman (`/wilayah-merek`), and weakest-outlet diagnostics with SKU movement and salesman attribution (`/outlet-terlemah`). All fonts, logos, and icons are self-hosted so the app runs completely offline.
+Three-page FastAPI web app that turns a 15-column sales CSV into a commercial summary with a one-paragraph Telegram update (`/`), sales tables by region, city branch, brand, and salesman (`/wilayah-merek`), and weakest-outlet analysis with SKU and salesman breakdown (`/outlet-terlemah`). All fonts, logos, and icons are bundled locally so the app runs offline.
 
-![Ringkasan penjualan & briefing Telegram](docs/screenshots/ringkasan.png)
+![Ringkasan penjualan & ringkasan Telegram](docs/screenshots/ringkasan.png)
 
-| Rincian penjualan (Wilayah, Cabang, Merek, Salesman) | Outlet terlemah & Notion Side Peek (diagnostik SKU) |
+| Rincian penjualan (Wilayah, Cabang, Merek, Salesman) | Outlet terlemah & panel detail SKU |
 |---|---|
-| ![Rincian penjualan](docs/screenshots/rincian-penjualan.png) | ![Outlet terlemah & Side Peek](docs/screenshots/outlet-terlemah-peek.png) |
+| ![Rincian penjualan](docs/screenshots/rincian-penjualan.png) | ![Outlet terlemah & panel detail](docs/screenshots/outlet-terlemah-peek.png) |
 
-## Deploy with Docker (recommended)
-
-Docker is the recommended way to run this app. The image uses `python:3.14-slim`, runs as a non-root user (`appuser`, UID `10001`), and includes a built-in `/healthz` check.
-
-### 1. Build and start the container
-
-With **Docker Compose** (simplest):
-
-```bash
-docker compose up -d --build
-```
-
-Or with plain **Docker CLI**:
-
-```bash
-docker build -t dua-kelinci-sales .
-docker run -d \
-  --name dua-kelinci-sales \
-  --restart unless-stopped \
-  -p 8000:8000 \
-  dua-kelinci-sales
-```
-
-Open `http://localhost:8000` in your browser.
-- Health check: `http://localhost:8000/healthz` (`{"status": "ok"}`)
-- JSON report API: `http://localhost:8000/api/report`
-
-### 2. Load your own CSV data
-
-You can supply another CSV (same 15 columns, at least 2 months of transactions) in two ways:
-
-- **From the browser (quickest)**: click **Unggah CSV** in the sidebar or top mobile bar (UTF-8 `,` or `;` CSV up to 10 MB). Use **Gunakan data sampel** at any time to switch back.
-- **Mount a file at container startup (persistent default)**:
-
-```bash
-docker run -d \
-  --name dua-kelinci-sales \
-  --restart unless-stopped \
-  -p 8000:8000 \
-  -v /path/to/sales.csv:/data/sales.csv:ro \
-  -e DATA_PATH=/data/sales.csv \
-  dua-kelinci-sales
-```
-
-### 3. Production notes
-
-- **Logs & lifecycle**: check logs with `docker logs -f dua-kelinci-sales`; stop and remove with `docker rm -f dua-kelinci-sales`.
-- **Network & auth**: the app makes zero outbound requests and does not include login authentication. Place it behind a reverse proxy (Nginx, Caddy, or Traefik) with HTTPS and access control when deploying beyond an internal network.
-
-## Run locally (without Docker)
+## Run locally
 
 Requires Python 3.12+:
 
 ```bash
 pip install -r requirements-dev.txt
 python -m pytest
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload
+```
+
+Open `http://127.0.0.1:8000` in your browser (JSON output at `http://127.0.0.1:8000/api/report`).
+
+To try another CSV with the same 15 columns and at least two months of data, click **Unggah CSV** in the sidebar (accepts `,` or `;` UTF-8 CSV up to 10 MB) or start with `DATA_PATH=/path/to/sales.csv`.
+
+## Run with Docker (optional)
+
+```bash
+docker compose up -d --build
+```
+
+Or with plain Docker CLI:
+
+```bash
+docker build -t dua-kelinci-sales .
+docker run --rm -p 8000:8000 dua-kelinci-sales
+```
+
+To mount a custom CSV file into the container:
+
+```bash
+docker run --rm -p 8000:8000 \
+  -v /path/to/sales.csv:/data/sales.csv:ro \
+  -e DATA_PATH=/data/sales.csv \
+  dua-kelinci-sales
 ```
 
 ## Documentation
 
-- [docs/architecture.md](docs/architecture.md): data flow, routes, configuration, and Docker details
 - [docs/data.md](docs/data.md): 15-column CSV schema and cleaning rules
-- [docs/metrics.md](docs/metrics.md): `Q1` weakest-outlet formula, SKU/salesman attribution, and Telegram format
-- [docs/decisions.md](docs/decisions.md): architectural and UI decisions
-- [AGENTS.md](AGENTS.md) / [CLAUDE.md](CLAUDE.md): instructions for AI coding agents
-- [CHANGELOG.md](CHANGELOG.md): release history
+- [docs/metrics.md](docs/metrics.md): weakest-outlet rule (`Q1` minimum), SKU/salesman breakdown, and Telegram paragraph
+- [docs/architecture.md](docs/architecture.md): data flow, routes, configuration, and Docker setup
+- [docs/decisions.md](docs/decisions.md): key engineering and UI trade-offs
+- [CHANGELOG.md](CHANGELOG.md): change history

@@ -60,7 +60,8 @@ def test_report_json(client):
     body = res.json()
     assert body["totals"]["net"] == 1_725_966_000
     assert len(body["weakest"]) == 5
-    assert body["telegram_summary"].startswith("**Laporan Penjualan Dua Kelinci**")
+    assert body["telegram_summary"].startswith("Penjualan bersih Oktober 2026 **Rp878,4 juta**")
+    assert "\n" not in body["telegram_summary"]
 
 
 def page(client, path: str) -> str:

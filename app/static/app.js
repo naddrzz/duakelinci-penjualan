@@ -295,7 +295,7 @@
     });
   }
 
-  // ---------------------------------------------------------------- dual-lens switch & search on outlet terlemah
+  // ---------------------------------------------------------------- % vs Rupiah tab switch & search on outlet terlemah
   function initLensSwitch(root) {
     const container = root.querySelector("[data-lens-root]");
     if (!container) return;
@@ -360,7 +360,7 @@
     );
   }
 
-  // ---------------------------------------------------------------- Notion-style outlet side peek
+  // ---------------------------------------------------------------- slide-over outlet detail panel
   let peekAbort = null;
 
   function initSidePeek(root) {

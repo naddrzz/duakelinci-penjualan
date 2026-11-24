@@ -4,7 +4,7 @@ If the data file changes, update them together with docs/metrics.md."""
 import pytest
 
 from app.analysis import adaptive_base_floor, change_pct, weakest_analysis, weakest_outlets
-from app.formatting import NBSP, date_id, pct, period_label, rp, rp_short, rp_tg, tg_preview_html
+from app.formatting import NBSP, date_id, pct, period_label, rp, rp_prose, rp_short, rp_tg, tg_preview_html
 
 
 def test_totals(report):
@@ -99,9 +99,9 @@ def test_funnel_partition_and_return_invoice_edges(report):
     # When min_base_idr == 0 (< 4 active outlets) AND a new outlet (base == 0) exists,
     # new + small + eligible must still partition total without double-counting.
     tiny_outlets = [
-        {"outlet_id": "NEW1", "base": 0, "current": 5_000_000, "total": 5_000_000, "change_idr": 5_000_000, "change_pct": None, "eb_change_pct": None},
-        {"outlet_id": "ACT1", "base": 4_000_000, "current": 2_000_000, "total": 6_000_000, "change_idr": -2_000_000, "change_pct": -50.0, "eb_change_pct": -30.0},
-        {"outlet_id": "ACT2", "base": 6_000_000, "current": 7_000_000, "total": 13_000_000, "change_idr": 1_000_000, "change_pct": 16.7, "eb_change_pct": 10.0},
+        {"outlet_id": "NEW1", "base": 0, "current": 5_000_000, "total": 5_000_000, "change_idr": 5_000_000, "change_pct": None},
+        {"outlet_id": "ACT1", "base": 4_000_000, "current": 2_000_000, "total": 6_000_000, "change_idr": -2_000_000, "change_pct": -50.0},
+        {"outlet_id": "ACT2", "base": 6_000_000, "current": 7_000_000, "total": 13_000_000, "change_idr": 1_000_000, "change_pct": 16.7},
     ]
     floor = adaptive_base_floor(tiny_outlets)
     assert floor == 0
@@ -128,8 +128,6 @@ def test_weakest_analysis_funnel(report):
     assert [o["outlet_id"] for o in a["largest_drop_idr"]][:2] == ["OUT1014", "OUT1025"]
     assert [o["outlet_id"] for o in a["revenue_at_risk"]][:2] == ["OUT1014", "OUT1025"]
     assert a["risk_drop_share_pct"] == pytest.approx(68.5, abs=0.2)
-    eb_ids = [o["outlet_id"] for o in a["empirical_bayes"]]
-    assert "OUT1043" in eb_ids and "OUT1014" in eb_ids
 
 
 def test_weakest_rule_edges():
@@ -150,52 +148,30 @@ def test_change_pct_without_base():
 
 def test_telegram_summary(report):
     text = report["telegram_summary"]
-    assert text.startswith("**Laporan Penjualan Dua Kelinci**\nPeriode Sep–Okt 2026")
-    assert text.count("\n") >= 40
-    assert len(text) < 4096  # fits inside a single Telegram message
-    for expected in (
-        f"Omzet bersih **Rp1,73{NBSP}miliar** (naik 3,6%)",
-        f"Sep Rp847,5{NBSP}jt → Okt Rp878,4{NBSP}jt",
-        "• Wilayah #1: **Jabodetabek**",
-        f"  Rp495,8{NBSP}jt (28,7%)",
-        f"  Tangerang Rp249,0{NBSP}jt · Jakarta Barat Rp168,8{NBSP}jt · Bekasi Rp78,0{NBSP}jt",
-        "• Merek #1: **Kacang Dua Kelinci**",
-        f"  Rp739,8{NBSP}jt (42,9%)",
-        "• Sales #1: **Citra** · Tangerang",
-        f"  Rp136,6{NBSP}jt (+17%)",
-        "**Rentang Tertinggi & Terendah**",
-        "• Toko tertinggi: **Grosir Harapan Baru** `OUT1007` · Tangerang",
-        f"  Rp190,5{NBSP}jt\n  Sales Citra, Dedi",
-        "• Toko terendah: **Toko Sinar Abadi** `OUT1003` · Jakarta Barat",
-        f"  Rp564{NBSP}rb\n  Sales Andi, Budi",
-        f"  Wilayah Kalimantan · Rp144,2{NBSP}jt\n  Kota Banjarmasin · Rp32,0{NBSP}jt",
-        f"  Merek Roni · Rp34,4{NBSP}jt\n  Sales Bayu (Banjarmasin) · Rp13,1{NBSP}jt",
-        "**5 Outlet Turun Terdalam (Sep → Okt)**",
-        "1. **Minimarket Sido Muncul** `OUT1043` · Palembang",
-        f"   Rp9,2{NBSP}jt → Rp2,9{NBSP}jt (**−69%** · −Rp6,3{NBSP}jt)",
-        f"   5→3{NBSP}faktur\n   Sales Zaki, Yudi (Zaki turun Rp6,8{NBSP}jt)",
-        f"4. **Toko Mekar** `OUT1048` · Banjarmasin",
-        f"   Sales Bayu, Agus (Agus berhenti order dari Rp1,5{NBSP}jt)",
-        "5. **Toko Sinar Abadi** `OUT1001` · Jakarta Barat",
-        "**Akun Besar Turun Rupiah Terbesar**",
-        "• **Grosir Sentosa** `OUT1014` · Bandung",
-        f"  Sales Gita, Hendra (Gita turun Rp37,6{NBSP}jt)",
-        "• Sales turun terdalam: **Teguh** · Medan",
-    ):
-        assert expected in text
-    assert "dari total" not in text
-    assert "Perbandingan:" not in text
-    assert "drop utama" not in text
+    assert "\n" not in text
+    assert text == (
+        "Penjualan bersih Oktober 2026 **Rp878,4 juta**, naik 3,6% dari September. "
+        "Jawa Timur naik 92%, tetapi empat dari enam wilayah turun, terdalam Jawa Barat (14%). "
+        "**Lima outlet turun terdalam:** Minimarket Sido Muncul `OUT1043` Palembang (69%, sales Zaki), "
+        "Toko Bintang `OUT1022` Semarang (63%, sales Lestari), "
+        "Toko Anugerah `OUT1041` Palembang (53%, sales Yudi), "
+        "Toko Mekar `OUT1048` Banjarmasin (52%, sales Agus), dan "
+        "Toko Sinar Abadi `OUT1001` Jakarta Barat (48%, sales Andi). "
+        "**Rupiah terbesar hilang** di Grosir Sentosa Bandung (Rp31,6 juta, sales Gita) dan "
+        "Grosir Sumber Alam Solo (Rp24,3 juta, sales Nanda)."
+    )
 
 
 def test_rp_tg_and_preview_xss_safety():
     assert rp_tg(1_725_966_000) == f"Rp1,73{NBSP}miliar"
     assert rp_tg(-6_308_000) == f"−Rp6,3{NBSP}jt"
-    assert rp_tg(564_000) == f"Rp564{NBSP}rb"
-    assert rp_tg(950) == "Rp950"
-    rendered = str(tg_preview_html("**Toko <script>x</script>** `OUT1`"))
+    assert rp_prose(878_448_600) == "Rp878,4 juta"
+    assert rp_prose(31_632_900) == "Rp31,6 juta"
+    assert rp_prose(564_000) == "Rp564 ribu"
+    rendered = str(tg_preview_html("**Toko <script>x</script>** `OUT__1` __Palembang__"))
     assert "<strong>Toko &lt;script&gt;x&lt;/script&gt;</strong>" in rendered
-    assert '<code class="tg-code">OUT1</code>' in rendered
+    assert '<code class="tg-code">OUT__1</code>' in rendered
+    assert "<em>Palembang</em>" in rendered
     assert "<script>" not in rendered
 
 

@@ -1,18 +1,23 @@
 # Changelog
 
+## 2.2.0 — 2026-11-24
+
+- **One-paragraph Telegram summary** (`app/analysis.py`, `app/formatting.py`, `ringkasan.html`): condensed `telegram_summary()` into a single flowing Bahasa Indonesia paragraph (`"\n" not in text`) covering current-month net sales & month-over-month change, regional breadth, the 5 steepest `%` drop outlets with the salesman driving each drop, and the largest Rupiah losses on big accounts.
+- **Local-first `README.md` & plain-language docs** (`README.md`, `docs/*.md`, `AGENTS.md`, `outlet_terlemah.html`): moved `Run locally` above Docker in `README.md`, removed the outdated `salesman` note in `docs/data.md`, and replaced heavy statistical/UI jargon across documentation and UI copy with plain explanations.
+
 ## 2.1.0 — 2026-11-24
 
 - **Redesigned Telegram executive summary & natural Bahasa Indonesia microcopy** (`app/analysis.py`, `app/formatting.py`, `ringkasan.html`, `outlet_terlemah.html`):
   - Replaced flat, long-line plain text with stacked short-line cards using Telegram client-side **`**bold**`** hierarchy and one-tap copyable **`` `OUTxxxx` ``** monospace outlet badges across **Capaian Utama**, **Rentang Tertinggi & Terendah**, **Outlet Turun Terdalam**, and **Akun Besar Turun Rupiah Terbesar**.
   - Added `rp_tg()` following **EYD Edisi V** (`Rp` attached without space + `U+00A0` non-breaking space before `rb`/`jt`/`miliar`) so currency prefixes and units never orphan-wrap in mobile chat bubbles, and replaced stiff translationese (*"Salesman kontraksi terdalam"*, *"drop utama"*, *"Perbandingan:"*, repeated *"dari total"*) with concise Indonesian commercial phrasing.
-  - Added safe HTML preview rendering (`tg_preview_html` / `div.tg-doc[data-tg-preview]`) on `/` so the web dashboard displays formatted bold text and monospace code pills without raw Markdown asterisks while keeping one-click raw Telegram copy (`#tg`) and Side Peek `Salin detail` intact.
+  - Added safe HTML preview rendering (`tg_preview_html` / `div.tg-doc[data-tg-preview]`) on `/` so the web dashboard displays formatted bold text and monospace code pills without raw Markdown asterisks while keeping one-click raw Telegram copy (`#tg`) and detail panel `Salin detail` intact.
 
 ## 2.0.0 — 2026-11-23
 
-- **Quiet architectural UI redesign & structured Tabbed Data Table** (approved from Wonder draft in workspace `insan-khamil` + follow-up table refinement):
+- **Clean layout redesign & tabbed 4-dimension table**:
   - Replaced boxed KPI cards, the multicolored stacked composition bar, and duplicate Ringkasan leaderboards with open **Stat Strips** (`dl.stat-strip` on `/` and `/outlet-terlemah`), generous `44px` vertical rhythm on a pure-white canvas (`#FFFFFF`) beside a warm-stone sidebar (`#FAFAFA`), and a clean document-sheet treatment for the Telegram briefing.
   - Renamed the `/wilayah-merek` navigation item to **Rincian penjualan** (covering all 4 dimensions) and converted the page into a focused **Tabbed Data Table** (`div.tabbed-sheet` + `Wilayah 6`, `Cabang Kota 13`, `Merek 8`, `Salesman 26` tabs) with auto-numbered `#` rows, `Selisih` & `Total` full-rupiah columns, inline share bars, and a `Total Keseluruhan` footer.
-  - Added an **Aksi → `Detail`** column and **Notion-style Right Side Peek** (`#outlet-side-peek`) on `/outlet-terlemah` (researched on Mobbin & approved in Wonder): non-blocking right drawer with active-row highlight, `»` close (`Escape`), `↑`/`↓` row stepping, one-click `Salin detail`, enriched Notion properties (branch, region, salesmen, invoice frequency & drop size, carton volume, SKU count, last order date/salesman, brands), interactive **Status & Pergerakan SKU** (`Semua / Berhenti / Jalan` per SKU with carton movement & salesman), per-salesman drop attribution cards, and exact Q1 calculation ledger.
+  - Added an **Aksi → `Detail`** column and **slide-over outlet detail panel** (`#outlet-side-peek`) on `/outlet-terlemah`: right-hand drawer with active-row highlight, `»` close (`Escape`), `↑`/`↓` row stepping, one-click `Salin detail`, outlet summary properties (branch, region, salesmen, invoice frequency, carton volume, SKU count, last order date/salesman, brands), interactive **Status & Pergerakan SKU** (`Semua / Berhenti / Jalan` per SKU with carton movement & salesman), per-salesman breakdown cards, and `Q1` calculation summary.
   - Styled all data tables across `/`, `/wilayah-merek`, and `/outlet-terlemah` as **clean structured tables** (`1px` rounded border frame, `#FAFAFA` sticky header & footer, subtle column hairlines, `tabular-nums` alignment, no horizontal thin scrollbar, and compact single-line cells so all columns fit cleanly on laptop viewports).
   - **Mobile-native polish & horizontal table sync**: synchronized `thead` and `tbody`/`tfoot` horizontal scrolling on `.numbered-table` and narrow viewports (`<= 720px`), converted `/wilayah-merek` dimension tabs into a single-row edge-to-edge swipeable strip, upgraded `/` Stat Strip and outlet filters to balanced `2×2` phone grids (`1-col` below `360px`), refined `#outlet-side-peek` mobile property/SKU/ledger rows and `44×44px` non-overlapping touch targets, converted `#upload-dialog` into a bottom sheet on phones, and added `viewport-fit=cover`, `interactive-widget=resizes-content`, `theme-color`, `enterkeyhint="search"`, safe-area insets, and coarse-pointer autofocus gating.
   - **Hardened offline Docker bundle (`Dockerfile`, `.dockerignore`, `compose.yaml`, `app/main.py`)**: explicit `mimetypes` registration (`font/woff2`, `image/x-icon`, `image/png`, `text/css`, `text/javascript`) for minimal `slim` images, whitelist `.dockerignore`, `chmod -R a+rX /app` + build-time verification of every font (`InterVariable.woff2`, `MontserratVariable.woff2`, OFL licences), logo, favicon, template, and CSV as `appuser`, configurable `PORT`, and a `read_only: true` `compose.yaml`.
@@ -25,7 +30,7 @@
 - **Salesman & Branch visibility across all three pages**:
   - `/` (`ringkasan.html`): added Region + Branch breakdown in the top KPI, Salesman KPI & 4-pillar leaderboards (`Wilayah`, `Cabang`, `Merek`, `Salesman`), Highest/Lowest extremes card, and a `Salesman` column + `#f-branch` & `#f-salesman` filters in `#outlet-table`.
   - `/wilayah-merek` (`wilayah_merek.html`): added `Per cabang (13 cabang)` and `Per salesman (26 salesman)` views alongside `Per wilayah` and `Per merek`, plus cross-dimensional branch and top-salesman columns in every table.
-  - `/outlet-terlemah` (`outlet_terlemah.html`): added `Salesman & sumber drop` column to both `%` erosion and `Rp` *Revenue-at-Risk* tables (pinpointing which salesman's orders contracted at shared outlets), an interactive search bar (`#weak-search`), and `[outlet_id]` + salesman labels across funnel and comparison lists.
+  - `/outlet-terlemah` (`outlet_terlemah.html`): added `Salesman` column to both `%` drop and `Rp` drop tables (showing which salesman's orders fell at shared outlets), an interactive search bar (`#weak-search`), and `[outlet_id]` + salesman labels across funnel lists.
   - Universal multi-token table search (`matchesQuery` in `app.js`): every data table across `/`, `/wilayah-merek` (all 4 views), and `/outlet-terlemah` now includes a live search bar supporting store name, outlet ID (`OUT10xx`), salesman name, city branch, region, store type, brand, and status.
 
 ## 1.8.3 — 2026-11-23
@@ -45,10 +50,10 @@
 
 ## 1.8.0 — 2026-11-23
 
-- **Dual-Lens FMCG weakest-outlet model & adaptive Q1 floor** (`app/analysis.py`, `outlet_terlemah.html`):
-  - Replaced the static base-sales cutoff with a data-driven 1st-quartile (`Q1 / P25`) materiality floor (`adaptive_base_floor()`, resolving to `Rp 5.000.000` from `Q1 = Rp 4.927.700` on the sample CSV and adapting automatically on custom CSV uploads).
-  - Added a segmented **Kemerosotan %** vs **Kehilangan Rp** (*Revenue-at-Risk*) switcher at the top of `/outlet-terlemah`, per-outlet invoice & SKU movement (`Sep→Okt`), and an **Empirical Bayes Shrinkage** cross-validation card.
-- **Telegram summary**: includes both the numbered top-5 `%` erosion outlets and a concise callout for top key-account rupiah drops (`Grosir Sentosa`, `Grosir Sumber Alam`) when distinct from the `%` list.
+- **`Q1` weakest-outlet cutoff & `%` / `Rp` drop tabs** (`app/analysis.py`, `outlet_terlemah.html`):
+  - Replaced the fixed base-sales cutoff with a 25th-percentile (`Q1`) cutoff (`adaptive_base_floor()`, scaling automatically on custom CSV uploads).
+  - Added a segmented **Kemerosotan %** vs **Kehilangan Rp** switcher at the top of `/outlet-terlemah` and per-outlet invoice & SKU movement (`Sep→Okt`).
+- **Telegram summary**: includes both the top-5 `%` drop outlets and a callout for top large-account rupiah drops (`Grosir Sentosa`, `Grosir Sumber Alam`) when distinct from the `%` list.
 
 ## 1.7.0 — 2026-11-23
 

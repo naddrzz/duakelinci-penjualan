@@ -63,13 +63,13 @@
 <div data-lens-root>
   {% call m.page_head(
        "Outlet terlemah & atribusi salesman",
-       "Menyaring " ~ (r.weakest|length if r.weakest else r.weakest_rule.count) ~ " kemerosotan terdalam pada outlet aktif" ~ (" ≥ Q1 (" ~ (min_base|rp) ~ ")" if min_base > 0 else "") ~ ", didampingi lensa kehilangan rupiah akun besar.",
+       "Menyaring " ~ (r.weakest|length if r.weakest else r.weakest_rule.count) ~ " penurunan persentase terdalam pada outlet aktif" ~ (" ≥ Q1 (" ~ (min_base|rp) ~ ")" if min_base > 0 else "") ~ ", dilengkapi tab penurunan rupiah terbesar untuk memantau akun grosir.",
        "Evaluasi Penurunan · " ~ compare_label
      ) %}
     {% if r.weakest or a.revenue_at_risk %}
     {%- set default_lens = "pct" if r.weakest else "idr" -%}
     <fieldset class="segmented" data-lens-switch hidden>
-      <legend>Lensa evaluasi</legend>
+      <legend>Urutan penurunan</legend>
       <span class="seg-indicator" aria-hidden="true"></span>
       <label><input type="radio" name="weak-lens" value="pct"{% if default_lens == "pct" %} checked{% endif %}>Kemerosotan % <span class="count">({{ r.weakest|length }})</span></label>
       <label><input type="radio" name="weak-lens" value="idr"{% if default_lens == "idr" %} checked{% endif %}>Kehilangan Rp <span class="count">({{ a.revenue_at_risk|length }})</span></label>
@@ -115,8 +115,8 @@
     <div class="method-split editorial-rule">
       <section class="clean-section rule-col" aria-labelledby="aturan">
         <h2 class="section-title" id="aturan">Aturan yang dipakai</h2>
-        <p class="editorial-copy">Menggunakan standar ritel <strong>Comparable Store Sales</strong> dengan kuartil bawah eksak (<strong>Q1</strong>) tanpa pembulatan antara agar bebas dari bias penyebut kecil (persamaan De Moivre, &sigma;<sub>x&#772;</sub> = &sigma; &divide; &radic;n).</p>
-        <div class="formula" role="group" aria-label="Rumus perubahan dan kuartil Q1">
+        <p class="editorial-copy">Hanya membandingkan toko yang sudah aktif sejak {{ base|month_label }}, lalu mengeluarkan 25% toko terkecil{% if min_base > 0 %} (di bawah kuartil bawah <strong>Q1 = {{ min_base|rp }}</strong>){% endif %} agar warung kecil yang turun sedikit rupiah tidak mendominasi persentase penurunan.</p>
+        <div class="formula" role="group" aria-label="Rumus perubahan dan batas minimum Q1">
           <div class="formula-row">
             <span class="formula-label">Rumus Perubahan</span>
             <span class="formula-body">({{ current|month_short }} − {{ base|month_short }}) ÷ {{ base|month_short }} × 100</span>
@@ -129,8 +129,8 @@
           {% endif %}
           {% if min_base > 0 %}
           <div class="formula-row">
-            <span class="formula-label">Ambang Kuartil Bawah (Q1 Eksak)</span>
-            <span class="formula-body">P25 (0,25 × ({{ after_new }} + 1)) = {{ min_base|rp }}</span>
+            <span class="formula-label">Batas Minimum Bulan Awal (Q1 / 25% Terbawah)</span>
+            <span class="formula-body">Urutan 25% terbawah dari {{ after_new }} toko aktif = {{ min_base|rp }}</span>
           </div>
           {% endif %}
         </div>
@@ -467,7 +467,7 @@
             {%- if o.base >= min_base -%}
             Basis {{ base|month_short }} {{ o.base|rp }} &ge; Q1 ({{ min_base|rp }}) &mdash; memenuhi syarat evaluasi
             {%- else -%}
-            Basis {{ base|month_short }} {{ o.base|rp }} di bawah ambang Q1 ({{ min_base|rp }}) &mdash; masuk lewat lensa Kehilangan Rp
+            Basis {{ base|month_short }} {{ o.base|rp }} di bawah ambang Q1 ({{ min_base|rp }}) &mdash; masuk lewat tab Kehilangan Rp
             {%- endif -%}
           </span>
           {% endif %}

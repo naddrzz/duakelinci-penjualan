@@ -4,11 +4,14 @@ import re
 from markupsafe import Markup, escape
 
 MONTHS_ID = ("Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des")
+MONTHS_FULL_ID = (
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+)
 MINUS = "−"
 NBSP = "\u00a0"
 
-_BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
-_CODE_RE = re.compile(r"`([^`\n]+)`")
+_TG_TOKEN_RE = re.compile(r"`([^`\n]+)`|\*\*(.+?)\*\*|__(.+?)__")
 
 
 def _id_decimal(text: str) -> str:
@@ -52,12 +55,34 @@ def rp_tg(value: int) -> str:
     return f"{sign}Rp{_id_decimal(text)}"
 
 
+def rp_prose(value: int) -> str:
+    """Natural prose rupiah (EYD V tight 'Rp' + full Indonesian unit words): Rp878,4 juta / Rp31,6 juta."""
+    sign = MINUS if value < 0 else ""
+    v = abs(value)
+    if v >= 1_000_000_000:
+        text = f"{v / 1e9:.2f} miliar"
+    elif v >= 1_000_000:
+        text = f"{v / 1e6:.1f} juta"
+    elif v >= 1_000:
+        text = f"{v / 1e3:.0f} ribu"
+    else:
+        text = str(v)
+    return f"{sign}Rp{_id_decimal(text)}"
+
+
+def _render_tg_token(match: re.Match[str]) -> str:
+    code, bold, italic = match.groups()
+    if code is not None:
+        return f'<code class="tg-code">{code}</code>'
+    if bold is not None:
+        return f"<strong>{bold}</strong>"
+    return f"<em>{italic}</em>"
+
+
 def tg_preview_html(text: str) -> Markup:
-    """Render Telegram `**bold**` and `` `code` `` safely as HTML for the dashboard preview."""
+    """Render Telegram `**bold**`, `__italic__`, and `` `code` `` safely as HTML."""
     safe = str(escape(text))
-    safe = _CODE_RE.sub(r'<code class="tg-code">\1</code>', safe)
-    safe = _BOLD_RE.sub(r"<strong>\1</strong>", safe)
-    return Markup(safe)
+    return Markup(_TG_TOKEN_RE.sub(_render_tg_token, safe))
 
 
 def pct(value: float | None, digits: int = 1, signed: bool = True) -> str:
@@ -77,6 +102,17 @@ def month_label(month: str) -> str:
 def month_short(month: str) -> str:
     """'2026-09' -> 'Sep'."""
     return MONTHS_ID[int(month.split("-")[1]) - 1]
+
+
+def month_full_name(month: str) -> str:
+    """'2026-09' -> 'September'."""
+    return MONTHS_FULL_ID[int(month.split("-")[1]) - 1]
+
+
+def month_full_label(month: str) -> str:
+    """'2026-10' -> 'Oktober 2026'."""
+    year, mon = month.split("-")
+    return f"{MONTHS_FULL_ID[int(mon) - 1]} {year}"
 
 
 def date_id(iso_date: str) -> str:

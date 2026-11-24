@@ -26,7 +26,7 @@ Source: `data/dua_kelinci_sample_sales_sep_oct_2026.csv` (override at startup wi
 
 1. **Trim** surrounding whitespace on every field (4 rows had a trailing space in `outlet_name`).
 2. **Normalise region** case-insensitively through `REGIONS` in `app/data.py`; `Jabar` is an alias of `Jawa Barat` (10 rows changed). An unknown region is kept in Title Case and listed in the report's `unknown_regions`, which the page footer shows.
-3. **Blank salesman** becomes `(unassigned)` (5 rows). No feature uses salesman today.
+3. **Blank salesman** becomes `(unassigned)` (5 rows; shown as `Belum tercatat` in salesman tables so totals still add up to 100%, while top/bottom salesman rankings compare named salesmen only).
 4. **Parse** date and integer columns; a missing column or unparseable value stops startup with a `ValueError` naming the line.
 5. **Check amounts**: rows where gross ≠ qty × price or net ≠ gross − discount are counted in `amount_mismatches` and shown in the footer; `net_sales_idr` is still used. (0 rows today.)
 6. **Drop exact duplicates** after steps 1–3 (3 rows, Rp 2.070.900: INV500201, INV500386, INV500791 were each entered twice).

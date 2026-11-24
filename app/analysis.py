@@ -10,7 +10,15 @@ import math
 import statistics
 
 from .data import UNASSIGNED_SALESMAN, CleaningReport, Sale
-from .formatting import NBSP, month_short, period_label, pct, rp, rp_short, rp_tg
+from .formatting import (
+    month_full_label,
+    month_full_name,
+    month_short,
+    period_label,
+    pct,
+    rp_prose,
+    rp_short,
+)
 
 UNASSIGNED_LABEL = "Belum tercatat"
 
@@ -21,14 +29,11 @@ def display_salesman(raw_name: str) -> str:
 
 
 def adaptive_base_floor(outlets: list[dict]) -> int:
-    """Compute the exact unrounded 1st quartile (Q1 / P25, position 0.25 * (N + 1),
-    equivalent to Excel QUARTILE.EXC) of active base-month outlets to suppress
-    small-denominator noise (De Moivre's equation) without intermediate rounding.
+    """Return the 25th-percentile (Q1) base-month sales among active outlets.
 
-    Uses math.ceil(q1) so that for any integer rupiah amount x, `x >= floor` is
-    mathematically identical to `x >= q1` even when linear interpolation yields
-    a .25/.5/.75 fractional rupiah. For tiny custom datasets (< 4 active outlets),
-    quartile trimming does not apply (returns 0).
+    Excluding the smallest 25% of base-month outlets prevents tiny stores from
+    dominating the % drop ranking over small rupiah changes, and scales automatically
+    when a different CSV is uploaded. Returns 0 when fewer than 4 active outlets exist.
     """
     active_bases = sorted(o["base"] for o in outlets if o["base"] > 0)
     if len(active_bases) < 4:
@@ -252,35 +257,6 @@ def _build_salesman_drop_note(sm_list: list[dict], outlet_change_idr: int) -> st
     )
 
 
-def _tg_salesman_line(o: dict) -> str:
-    """Format the salesman attribution line for a declining outlet block in Telegram."""
-    sm_list = o["salesmen"]
-    if not sm_list:
-        return f"Sales {o['salesman']}"
-    if len(sm_list) == 1:
-        only = sm_list[0]
-        if only["base"] > 0 and only["current"] <= 0:
-            return f"Sales {o['salesman']} (berhenti order dari {rp_tg(only['base'])})"
-        return f"Sales {o['salesman']}"
-
-    by_drop = sorted(sm_list, key=lambda s: (s["change_idr"], s["change_pct"] or 0))
-    worst = by_drop[0]
-    if worst["change_idr"] >= 0:
-        return f"Sales {o['salesman']}"
-    if worst["base"] > 0 and worst["current"] <= 0:
-        return f"Sales {o['salesman']} ({worst['name']} berhenti order dari {rp_tg(worst['base'])})"
-
-    others_up = any(s["change_idr"] >= 0 for s in by_drop[1:])
-    dominant = abs(worst["change_idr"]) >= 0.65 * abs(o["change_idr"])
-    if others_up or dominant:
-        return f"Sales {o['salesman']} ({worst['name']} turun {rp_tg(abs(worst['change_idr']))})"
-
-    detail = ", ".join(
-        f"{s['name']} {rp_tg(s['change_idr'])}" for s in by_drop[:2] if s["change_idr"] < 0
-    )
-    return f"Sales {o['salesman']} ({detail})" if detail else f"Sales {o['salesman']}"
-
-
 def outlet_table(rows: list[Sale], base: str, current: str) -> list[dict]:
     """Every outlet with base vs current month net sales, salesman roster, operational activity, and % change.
 
@@ -361,12 +337,6 @@ def outlet_table(rows: list[Sale], base: str, current: str) -> list[dict]:
                 c_inv.add(sale.invoice_no)
                 c_sku.add(sale.sku)
 
-    active_bases = [o["base"] for o in outlets.values() if o["base"] > 0]
-    eb_prior_c = statistics.median(active_bases) if active_bases else 0.0
-    total_base = sum(o["base"] for o in outlets.values())
-    total_curr = sum(o["current"] for o in outlets.values())
-    pop_ratio = total_curr / total_base if total_base > 0 else 1.0
-
     table = []
     for oid, o in outlets.items():
         b_inv, c_inv = inv_sets[oid]
@@ -386,11 +356,6 @@ def outlet_table(rows: list[Sale], base: str, current: str) -> list[dict]:
         o["total"] = o["base"] + o["current"]
         o["change_idr"] = o["current"] - o["base"]
         o["change_pct"] = change_pct(o["base"], o["current"])
-        o["eb_change_pct"] = (
-            ((o["current"] + eb_prior_c * pop_ratio) / (o["base"] + eb_prior_c) - 1) * 100
-            if o["base"] > 0 and (o["base"] + eb_prior_c) > 0
-            else None
-        )
 
         raw_sm_map = sm_ledger[oid]
         has_named = any(k != UNASSIGNED_SALESMAN for k in raw_sm_map)
@@ -498,9 +463,8 @@ def weakest_outlets(outlets: list[dict], min_base_idr: int, count: int) -> list[
 
 
 def weakest_analysis(outlets: list[dict], min_base_idr: int, count: int) -> dict:
-    """How the weakest-outlet rule narrows all outlets down, step by step, plus
-    complementary FMCG lenses (steepest rupiah revenue loss, Empirical Bayes ranking,
-    and lowest total sales for methodology comparison)."""
+    """How the weakest-outlet rule narrows all outlets down step by step, plus
+    the top Rupiah drops across all active declining outlets."""
     new = [o for o in outlets if o["base"] <= 0]
     small = [o for o in outlets if 0 < o["base"] < min_base_idr]
     eligible = [o for o in outlets if o["base"] > 0 and o["base"] >= min_base_idr]
@@ -508,10 +472,6 @@ def weakest_analysis(outlets: list[dict], min_base_idr: int, count: int) -> dict
     all_declining = [o for o in outlets if o["base"] > 0 and o["change_idr"] < 0]
     total_drop_idr = sum(-o["change_idr"] for o in all_declining)
     top_drop_declining = sorted(all_declining, key=lambda o: (o["change_idr"], o["change_pct"] or 0))[:count]
-    eb_declining = sorted(
-        all_declining,
-        key=lambda o: (o["eb_change_pct"] if o["eb_change_pct"] is not None else 0, o["change_idr"]),
-    )[:count]
     return {
         "total": len(outlets),
         "new": new,
@@ -523,159 +483,133 @@ def weakest_analysis(outlets: list[dict], min_base_idr: int, count: int) -> dict
         "lowest_total": sorted(outlets, key=lambda o: o["total"])[:count],
         "largest_drop_idr": sorted(outlets, key=lambda o: o["change_idr"])[:count],
         "revenue_at_risk": top_drop_declining,
-        "empirical_bayes": eb_declining,
     }
 
 
+_NUM_WORDS_ID = {
+    1: "satu", 2: "dua", 3: "tiga", 4: "empat", 5: "lima", 6: "enam",
+    7: "tujuh", 8: "delapan", 9: "sembilan", 10: "sepuluh", 11: "sebelas", 12: "dua belas",
+}
+
+
+def _num_word_id(n: int) -> str:
+    return _NUM_WORDS_ID.get(n, str(n))
+
+
+def _join_id(items: list[str], final_conj: str = "dan") -> str:
+    """Join Indonesian list items naturally: 'A', 'A dan B', or 'A, B, dan C'."""
+    if not items:
+        return ""
+    if len(items) == 1:
+        return items[0]
+    if len(items) == 2:
+        return f"{items[0]} dan {items[1]}"
+    return f"{', '.join(items[:-1])}, {final_conj} {items[-1]}"
+
+
+def _drop_salesman_tag(outlet: dict) -> str:
+    """Return ', sales <Name>' for the salesman with the largest rupiah drop at this outlet."""
+    named = [s for s in outlet.get("salesmen", []) if s["name"] != UNASSIGNED_LABEL]
+    if not named:
+        return ""
+    worst = min(named, key=lambda s: (s["change_idr"], s["change_pct"] or 0))
+    return f", sales {worst['name']}"
+
+
 def telegram_summary(report: dict) -> str:
-    """Chat-first executive pulse for Telegram (Bahasa Indonesia).
-
-    Uses Telegram client-side `**bold**` anchors, tap-to-copy `` `OUTxxxx` `` badges,
-    EYD V tight `Rp` with `U+00A0` non-breaking unit spaces, and short stacked lines
-    separated by blank lines so mobile and desktop chat bubbles scan cleanly.
-    """
+    """One-paragraph Bahasa Indonesia summary ready to read in Telegram."""
     base, current = report["period"]["base"], report["period"]["current"]
-    b_lbl, c_lbl = month_short(base), month_short(current)
+    cur_lbl = month_full_label(current)
+    base_ref = month_full_name(base) if base[:4] == current[:4] else month_full_label(base)
     totals = report["totals"]
-    ext = report["extremes"]
-    best_reg = ext["best_region"]
-    best_br = ext["best_branch"]
-    best_brand = ext["best_brand"]
-    best_sm = ext["best_salesman"]
-    hi_out = ext["highest_outlet"]
-    lo_out = ext["lowest_outlet"]
-    lo_reg = ext["lowest_region"]
-    lo_br = ext["lowest_branch"]
-    lo_brand = ext["lowest_brand"]
-    lo_sm = ext["lowest_salesman"]
 
+    cur_net = rp_prose(totals["by_month"][current])
     change = totals["change_pct"]
     if change is None or round(change, 1) == 0:
-        trend = "stabil"
+        sentences = [f"Penjualan bersih {cur_lbl} **{cur_net}**, stabil dari {base_ref}."]
     else:
-        trend = f"{'naik' if change > 0 else 'turun'} {pct(abs(change), signed=False)}"
+        verb = "naik" if change > 0 else "turun"
+        sentences = [
+            f"Penjualan bersih {cur_lbl} **{cur_net}**, "
+            f"{verb} {pct(abs(change), signed=False)} dari {base_ref}."
+        ]
 
-    reg_branches_str = " · ".join(
-        f"{b['name']} {rp_tg(b['total'])}" for b in best_reg["branches"]
+    regions = report["regions"]
+    n_reg = len(regions)
+    reg_with_pct = [r for r in regions if r["change_pct"] is not None]
+    growing_regs = sorted(
+        [r for r in reg_with_pct if r["change_idr"] > 0],
+        key=lambda r: (-r["change_pct"], -r["change_idr"]),
+    )
+    declining_regs = sorted(
+        [r for r in reg_with_pct if r["change_idr"] < 0],
+        key=lambda r: (r["change_pct"], r["change_idr"]),
     )
 
-    lines = [
-        "**Laporan Penjualan Dua Kelinci**",
-        f"Periode {report['period']['label']}",
-        "",
-        "**Capaian Utama**",
-        f"Omzet bersih **{rp_tg(totals['net'])}** ({trend})",
-        f"{b_lbl} {rp_tg(totals['by_month'][base])} → {c_lbl} {rp_tg(totals['by_month'][current])}",
-        "",
-        f"• Wilayah #1: **{best_reg['name']}**",
-        f"  {rp_tg(best_reg['total'])} ({pct(best_reg['share_pct'], signed=False)})",
-        f"  {reg_branches_str}",
-    ]
-    if best_br["region"] != best_reg["name"]:
-        lines.extend([
-            "",
-            f"• Kota #1: **{best_br['name']}** ({best_br['region']})",
-            f"  {rp_tg(best_br['total'])} ({pct(best_br['share_pct'], signed=False)})",
-        ])
-    lines.extend([
-        "",
-        f"• Merek #1: **{best_brand['name']}**",
-        f"  {rp_tg(best_brand['total'])} ({pct(best_brand['share_pct'], signed=False)})",
-    ])
-    if best_sm:
-        sm_trend = f" ({pct(best_sm['change_pct'], digits=0)})" if best_sm["change_pct"] is not None else ""
-        lines.extend([
-            "",
-            f"• Sales #1: **{best_sm['name']}** · {best_sm['branch']}",
-            f"  {rp_tg(best_sm['total'])}{sm_trend}",
-        ])
-
-    lines.extend([
-        "",
-        "**Rentang Tertinggi & Terendah**",
-        "",
-        f"• Toko tertinggi: **{hi_out['name']}** `{hi_out['outlet_id']}` · {hi_out['branch']}",
-        f"  {rp_tg(hi_out['total'])}",
-        f"  Sales {hi_out['salesman']}",
-        "",
-        f"• Toko terendah: **{lo_out['name']}** `{lo_out['outlet_id']}` · {lo_out['branch']}",
-        f"  {rp_tg(lo_out['total'])}",
-        f"  Sales {lo_out['salesman']}",
-        "",
-        "• Wilayah & kota terendah",
-        f"  Wilayah {lo_reg['name']} · {rp_tg(lo_reg['total'])}",
-        f"  Kota {lo_br['name']} · {rp_tg(lo_br['total'])}",
-        "",
-    ])
-    if lo_sm:
-        lines.extend([
-            "• Merek & sales terendah",
-            f"  Merek {lo_brand['name']} · {rp_tg(lo_brand['total'])}",
-            f"  Sales {lo_sm['name']} ({lo_sm['branch']}) · {rp_tg(lo_sm['total'])}",
-        ])
-    else:
-        lines.extend([
-            "• Merek terendah",
-            f"  Merek {lo_brand['name']} · {rp_tg(lo_brand['total'])}",
-        ])
+    if growing_regs and declining_regs:
+        top_up = growing_regs[0]
+        up_pct = pct(abs(top_up["change_pct"]), digits=0, signed=False)
+        top_down = declining_regs[0]
+        down_pct = pct(abs(top_down["change_pct"]), digits=0, signed=False)
+        if len(declining_regs) >= 2:
+            sentences.append(
+                f"{top_up['name']} naik {up_pct}, tetapi {_num_word_id(len(declining_regs))} dari "
+                f"{_num_word_id(n_reg)} wilayah turun, terdalam {top_down['name']} ({down_pct})."
+            )
+        elif n_reg == 2:
+            sentences.append(f"{top_up['name']} naik {up_pct}, tetapi {top_down['name']} turun {down_pct}.")
+        else:
+            sentences.append(
+                f"{top_up['name']} naik {up_pct}, tetapi satu dari {_num_word_id(n_reg)} wilayah "
+                f"turun yaitu {top_down['name']} ({down_pct})."
+            )
+    elif growing_regs:
+        top_up = growing_regs[0]
+        up_pct = pct(abs(top_up["change_pct"]), digits=0, signed=False)
+        if n_reg > 1:
+            sentences.append(f"Seluruh {_num_word_id(n_reg)} wilayah naik, tertinggi {top_up['name']} ({up_pct}).")
+        else:
+            sentences.append(f"Wilayah {top_up['name']} naik {up_pct}.")
+    elif declining_regs:
+        top_down = declining_regs[0]
+        down_pct = pct(abs(top_down["change_pct"]), digits=0, signed=False)
+        if n_reg > 1:
+            sentences.append(f"Seluruh {_num_word_id(n_reg)} wilayah turun, terdalam {top_down['name']} ({down_pct}).")
+        else:
+            sentences.append(f"Wilayah {top_down['name']} turun {down_pct}.")
 
     weakest = report["weakest"]
     rev_risk = report["weakest_analysis"]["revenue_at_risk"]
     if weakest:
-        lines.extend([
-            "",
-            f"**{len(weakest)} Outlet Turun Terdalam ({b_lbl} → {c_lbl})**",
-        ])
-        for idx, o in enumerate(weakest, start=1):
-            lines.extend([
-                "",
-                f"{idx}. **{o['name']}** `{o['outlet_id']}` · {o['branch']}",
-                f"   {rp_tg(o['base'])} → {rp_tg(o['current'])} (**{pct(o['change_pct'], digits=0)}** · {rp_tg(o['change_idr'])})",
-                f"   {o['base_invoices']}→{o['current_invoices']}{NBSP}faktur",
-                f"   {_tg_salesman_line(o)}",
-            ])
+        cnt_word = _num_word_id(len(weakest)).capitalize()
+        weak_parts = [
+            f"{o['name']} `{o['outlet_id']}` {o['branch']} "
+            f"({pct(abs(o['change_pct']), digits=0, signed=False)}{_drop_salesman_tag(o)})"
+            for o in weakest
+        ]
+        sentences.append(f"**{cnt_word} outlet turun terdalam:** {_join_id(weak_parts, 'dan')}.")
+
         weak_ids = {o["outlet_id"] for o in weakest}
-        extra_big_drops = [o for o in rev_risk[:3] if o["outlet_id"] not in weak_ids]
-        steep_sm = ext.get("steepest_drop_salesman")
-        has_steep_sm = bool(steep_sm and steep_sm["change_idr"] < 0)
-        if extra_big_drops or has_steep_sm:
-            lines.extend([
-                "",
-                "**Akun Besar Turun Rupiah Terbesar**" if extra_big_drops else "**Catatan Penurunan Salesman**",
-            ])
-            for o in extra_big_drops:
-                lines.extend([
-                    "",
-                    f"• **{o['name']}** `{o['outlet_id']}` · {o['branch']}",
-                    f"  {rp_tg(o['base'])} → {rp_tg(o['current'])} (**{rp_tg(o['change_idr'])}** · {pct(o['change_pct'], digits=0)})",
-                    f"  {o['base_invoices']}→{o['current_invoices']}{NBSP}faktur",
-                    f"  {_tg_salesman_line(o)}",
-                ])
-            if has_steep_sm:
-                lines.extend([
-                    "",
-                    f"• Sales turun terdalam: **{steep_sm['name']}** · {steep_sm['branch']}",
-                    f"  {rp_tg(steep_sm['by_month'][base])} → {rp_tg(steep_sm['by_month'][current])} (**{pct(steep_sm['change_pct'], digits=0)}** · {rp_tg(steep_sm['change_idr'])})",
-                ])
+        extra_big_drops = [o for o in rev_risk[:2] if o["outlet_id"] not in weak_ids]
+        if extra_big_drops:
+            big_parts = [
+                f"{o['name']} {o['branch']} ({rp_prose(abs(o['change_idr']))}{_drop_salesman_tag(o)})"
+                for o in extra_big_drops
+            ]
+            sentences.append(f"**Rupiah terbesar hilang** di {_join_id(big_parts, 'dan')}.")
     elif rev_risk:
-        lines.extend([
-            "",
-            f"**Outlet Turun Penjualan ({b_lbl} → {c_lbl})**",
-        ])
-        for idx, o in enumerate(rev_risk, start=1):
-            lines.extend([
-                "",
-                f"{idx}. **{o['name']}** `{o['outlet_id']}` · {o['branch']}",
-                f"   {rp_tg(o['base'])} → {rp_tg(o['current'])} (**{pct(o['change_pct'], digits=0)}** · {rp_tg(o['change_idr'])})",
-                f"   {o['base_invoices']}→{o['current_invoices']}{NBSP}faktur",
-                f"   {_tg_salesman_line(o)}",
-            ])
+        top_risk = rev_risk[:5]
+        cnt_word = _num_word_id(len(top_risk)).capitalize()
+        risk_parts = [
+            f"{o['name']} `{o['outlet_id']}` {o['branch']} "
+            f"({pct(abs(o['change_pct']), digits=0, signed=False)}{_drop_salesman_tag(o)})"
+            for o in top_risk
+        ]
+        sentences.append(f"**{cnt_word} outlet turun terdalam:** {_join_id(risk_parts, 'dan')}.")
     else:
-        lines.extend([
-            "",
-            f"Tidak ada outlet yang turun dari {b_lbl} ke {c_lbl}.",
-        ])
-    return "\n".join(lines)
+        sentences.append(f"Seluruh outlet stabil atau naik dari {base_ref}.")
+
+    return " ".join(sentences)
 
 
 def build_report(
